@@ -59,7 +59,7 @@
                             :aria-label="`预览${product.model || product.productCode || '产品'}图片`"
                             @click="openImagePreview(product.image, product.model || product.productCode || '产品图片')"
                         >
-                            <img :src="product.image" :alt="product.model || product.productCode || '产品图片'">
+                            <img :src="resolveErpImageUrl(product.image)" :alt="product.model || product.productCode || '产品图片'">
                         </button>
                         <Icon v-else name="lucide:image" />
                     </div>
@@ -250,6 +250,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import ImagePreviewDialog from "~/components/configuration/inventory/ImagePreviewDialog.vue";
 import InventoryRestrictionDialog from "~/components/configuration/inventory/InventoryRestrictionDialog.vue";

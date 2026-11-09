@@ -118,6 +118,20 @@
             @page-change="handlePageChange"
             @jump="handleJumpPage"
         />
+        <el-dialog v-model="showAttachmentList" title="回款单附件" append-to-body>
+            <ul>
+                <li v-for="(attachment, index) in activeAttachments" :key="index">
+                    <button class="link-button" type="button" @click="previewAttachment(attachment)">
+                        {{ getAttachmentFileName(attachment) || '附件' }}
+                    </button>
+                </li>
+            </ul>
+        </el-dialog>
+        <AttachmentImagePreview
+            v-model="showAttachmentPreview"
+            :title="attachmentTitle"
+            :src="attachmentImage"
+        />
     </div>
 </template>
 
@@ -126,6 +140,7 @@ import ErpBreadcrumb from "~/components/configuration/ErpBreadcrumb.vue";
 import ErpSearchBox from "~/components/configuration/ErpSearchBox.vue";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import InventoryPagination from "~/components/configuration/inventory/basic-data/InventoryPagination.vue";
+import AttachmentImagePreview from "~/components/configuration/sales/AttachmentImagePreview.vue";
 import { useInventoryPagination } from "~/composables/inventory/useInventoryPagination";
 import { erpMessageBox } from "~/utils/erpMessageBox";
 import { getErpTableGridColumn, getErpTableMinimumWidth } from "~/utils/inventory/erpTableColumns";
@@ -135,7 +150,10 @@ import {
     getAttachmentPath,
     isImageAttachment,
     toAbsoluteAttachmentUrl,
+    type AttachmentPreviewSource,
 } from "~/utils/attachmentPreview";
+import { isDesktop } from "~/utils/desktop";
+import { escapeHtml } from "~/utils/highlightText";
 import {
     auditSalesOrderReceipt,
     retrieveSalesOrderReceipts,
@@ -252,19 +270,25 @@ const getPaymentProgressPercent = (receipt: SalesOrderReceipt) => {
 const getReceiptAttachments = (receipt: SalesOrderReceipt) =>
     Array.isArray(receipt.attachments) ? receipt.attachments.filter(Boolean) : []
 
-const escapeHtml = (value: string) =>
-    value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;')
+const showAttachmentList = ref(false)
+const showAttachmentPreview = ref(false)
+const activeAttachments = ref<AttachmentPreviewSource[]>([])
+const attachmentTitle = ref('')
+const attachmentImage = ref('')
 
-const previewAttachment = (attachment: any) => {
+const previewAttachment = (attachment: AttachmentPreviewSource) => {
     const path = getAttachmentPath(attachment)
     if (!path) return
     if (isImageAttachment(attachment)) {
-        window.open(toAbsoluteAttachmentUrl(path, window.location.origin), '_blank', 'noopener,noreferrer')
+        const url = toAbsoluteAttachmentUrl(path, window.location.origin)
+        if (!url) return
+        if (isDesktop()) {
+            attachmentTitle.value = getAttachmentFileName(attachment) || '附件'
+            attachmentImage.value = url
+            showAttachmentPreview.value = true
+        } else {
+            window.open(url, '_blank', 'noopener,noreferrer')
+        }
         return
     }
     void downloadAttachmentFile(path, getAttachmentFileName(attachment)).catch(() => {
@@ -277,6 +301,11 @@ const handleViewAttachments = async (receipt: SalesOrderReceipt) => {
     if (attachments.length === 0) return
     if (attachments.length === 1) {
         previewAttachment(attachments[0])
+        return
+    }
+    if (isDesktop()) {
+        activeAttachments.value = attachments
+        showAttachmentList.value = true
         return
     }
 

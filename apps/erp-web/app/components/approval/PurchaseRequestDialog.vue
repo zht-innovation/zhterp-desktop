@@ -213,7 +213,7 @@
                                     <div class="readonly-cell" :title="item.model">{{ item.model || "--" }}</div>
                                     <div class="readonly-cell" :title="item.category">{{ item.category || "--" }}</div>
                                     <div class="product-image-cell">
-                                        <img v-if="item.image" :src="item.image" :alt="item.model || item.name">
+                                        <img v-if="item.image" :src="resolveErpImageUrl(item.image)" :alt="item.model || item.name">
                                         <Icon v-else name="lucide:image" />
                                     </div>
                                     <div class="quantity-cell">
@@ -358,6 +358,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import ProductPickerDialog from "~/components/configuration/inventory/ProductPickerDialog.vue";
 import type { ProductPickerColumn, ProductPickerLoadParams } from "~/components/configuration/inventory/ProductPickerDialog.vue";

@@ -1,6 +1,6 @@
 <template>
     <button v-if="src && !imageFailed" class="production-execution-image" type="button" :aria-label="`预览${name}图片`" @click="showPreview = true">
-        <img :src="src" :alt="name" loading="lazy" @error="imageFailed = true" />
+        <img :src="resolveErpImageUrl(src)" :alt="name" loading="lazy" @error="imageFailed = true" />
         <Icon name="lucide:zoom-in" />
     </button>
     <span v-else class="production-execution-image production-execution-image-placeholder" role="img" :aria-label="`${name}暂无图片`"><Icon name="lucide:image" /><small>暂无图片</small></span>
@@ -8,6 +8,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ImagePreviewDialog from "~/components/configuration/inventory/ImagePreviewDialog.vue";
 
 const props = defineProps<{ src?: string; name: string }>();

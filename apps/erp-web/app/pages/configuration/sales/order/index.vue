@@ -95,6 +95,7 @@
                 class="hidden-file-input"
                 type="file"
                 accept=".xlsx,.xls,.csv"
+                @click="openDesktopFileInput($event, MAX_DESKTOP_OPEN_BYTES, (files) => importOrdersFile(files[0]))"
                 @change="handleImportOrders"
             />
         </div>
@@ -192,7 +193,7 @@
                                 title="查看订单图片"
                                 @click="openOrderImage(order)"
                             >
-                                <img :src="getOrderThumbnailUrl(order)" :alt="`${order.orderNo || '订单'}图片`" />
+                                <img :src="resolveErpImageUrl(getOrderThumbnailUrl(order))" :alt="`${order.orderNo || '订单'}图片`" />
                                 <span v-if="getOrderImageCount(order) > 1" class="order-thumbnail-count">
                                     {{ getOrderImageCount(order) }}
                                 </span>
@@ -290,7 +291,7 @@
                                 title="查看订单图片"
                                 @click="openOrderImage(order)"
                             >
-                                <img :src="getOrderThumbnailUrl(order)" :alt="`${order.orderNo || '订单'}图片`" />
+                                <img :src="resolveErpImageUrl(getOrderThumbnailUrl(order))" :alt="`${order.orderNo || '订单'}图片`" />
                                 <span v-if="getOrderImageCount(order) > 1" class="order-thumbnail-count">
                                     {{ getOrderImageCount(order) }}
                                 </span>
@@ -573,7 +574,7 @@
                                 >
                                     <Icon :name="getAttachmentIcon(attachment)" class="attachment-type-icon" />
                                     <span :title="getAttachmentName(attachment)">{{ getAttachmentName(attachment) }}</span>
-                                    <button title="查看" @click="openAttachment(attachment)">
+                                    <button v-if="!isDesktop() || isImageAttachment(attachment)" title="查看" @click="openAttachment(attachment)">
                                         <Icon name="material-symbols:visibility-outline-rounded" />
                                     </button>
                                     <button title="下载" @click="downloadAttachment(attachment)">
@@ -757,7 +758,7 @@
                     <div v-else class="draft-list">
                         <article v-for="draft in draftOrders" :key="draft._id || draft.id" class="draft-card">
                             <div class="draft-thumb">
-                                <img v-if="getOrderThumbnailUrl(draft)" :src="getOrderThumbnailUrl(draft)" alt="" />
+                                <img v-if="getOrderThumbnailUrl(draft)" :src="resolveErpImageUrl(getOrderThumbnailUrl(draft))" alt="" />
                                 <span v-else>无图</span>
                             </div>
                             <div class="draft-info">
@@ -797,6 +798,7 @@
 </template>
 
 <script setup lang="ts">
+import { downloadBlob, MAX_DESKTOP_OPEN_BYTES, openDesktopFileInput } from "~/utils/fileActions";
 import ErpBreadcrumb from "~/components/configuration/ErpBreadcrumb.vue";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import ErpSearchBox from "~/components/configuration/ErpSearchBox.vue";
@@ -804,7 +806,8 @@ import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import InventoryPagination from "~/components/configuration/inventory/basic-data/InventoryPagination.vue";
 import { useInventoryPagination } from "~/composables/inventory/useInventoryPagination";
 import { useApprovalCellCopy } from "~/composables/useApprovalCellCopy";
-import { downloadAttachmentFile } from "~/utils/attachmentPreview";
+import { downloadAttachmentFile, isImageAttachment, resolveErpImageUrl } from "~/utils/attachmentPreview";
+import { isDesktop } from "~/utils/desktop";
 import { erpMessageBox } from "~/utils/erpMessageBox";
 import {
     getErpTableColumnWidth,
@@ -1505,24 +1508,22 @@ const buildOrderQuery = () => ({
     deletedOnly: !isApprovalPage.value && showDeletedOrders.value,
 })
 
-const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-}
-
 const openAttachment = (attachment: any) => {
     const url = getAttachmentUrl(attachment)
     if (!url) {
         ElMessage.warning('附件地址不存在')
         return
     }
-    window.open(url, '_blank')
+    if (isDesktop()) {
+        if (!isImageAttachment(attachment)) return
+        const imageUrl = resolveErpImageUrl(url)
+        if (!imageUrl) return
+        previewTitle.value = getAttachmentName(attachment)
+        previewImages.value = [{ url: imageUrl, alt: previewTitle.value }]
+        showImagePreview.value = true
+        return
+    }
+    window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 const downloadAttachment = async (attachment: any) => {
@@ -1732,10 +1733,14 @@ const triggerImportOrders = () => {
     importInputRef.value?.click()
 }
 
-const handleImportOrders = async (event: Event) => {
+const handleImportOrders = (event: Event) => {
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
     input.value = ''
+    return importOrdersFile(file)
+}
+
+const importOrdersFile = async (file?: File) => {
     if (!file || isImporting.value) return
 
     isImporting.value = true
@@ -1779,8 +1784,7 @@ const handleExportOrders = async () => {
     isExporting.value = true
     try {
         const blob = await exportSalesOrders()(buildOrderQuery())
-        downloadBlob(blob, `订单记录_${new Date().toISOString().slice(0, 10)}.xlsx`)
-        ElMessage.success('订单导出完成')
+        if (await downloadBlob(blob, `订单记录_${new Date().toISOString().slice(0, 10)}.xlsx`)) ElMessage.success('订单导出完成')
     } catch (err: any) {
         ElMessage.error(err?.data?.msg || err?.message || '订单导出失败')
     } finally {

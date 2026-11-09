@@ -1,0 +1,18 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "erp-desktop-local",
+    "description": "Access to ERP requests, the desktop session and user-selected files from the bundled ERP window.",
+    "windows": ["erp"],
+    "local": true,
+    "platforms": ["windows", "macOS"],
+    "permissions": [
+        "allow-desktop-info",
+        "allow-erp-request",
+        "allow-upload-product-image",
+        "allow-restore-desktop-session",
+        "allow-save-desktop-session",
+        "allow-clear-desktop-session",
+        "allow-open-local-files",
+        "allow-save-local-file"
+    ]
+}

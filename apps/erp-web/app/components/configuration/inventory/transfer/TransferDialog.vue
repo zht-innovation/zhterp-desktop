@@ -133,7 +133,7 @@
                             <div class="table-cell product-cell image-cell">
                                 <img
                                     v-if="item.image"
-                                    :src="item.image"
+                                    :src="resolveErpImageUrl(item.image)"
                                     class="clickable-image"
                                     :alt="item.model || item.productCode || '产品图片'"
                                     role="button"
@@ -204,6 +204,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import InventoryDatePicker from "~/components/configuration/inventory/InventoryDatePicker.vue";

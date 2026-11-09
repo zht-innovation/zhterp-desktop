@@ -285,7 +285,7 @@
                         <template v-if="column.key === 'image'">
                             <img
                                 v-if="product.image"
-                                :src="product.image"
+                                :src="resolveErpImageUrl(product.image)"
                                 :alt="product.model || product.id"
                                 class="clickable-image"
                                 @click.stop="openImagePreview(product.image, product.model || product.id)"
@@ -324,7 +324,7 @@
                         <template v-if="column.key === 'image'">
                             <img
                                 v-if="product.image"
-                                :src="product.image"
+                                :src="resolveErpImageUrl(product.image)"
                                 :alt="product.model || product.id"
                                 class="clickable-image"
                                 @click.stop="openImagePreview(product.image, product.model || product.id)"
@@ -448,6 +448,7 @@
                             type="file"
                             accept=".xlsx"
                             :disabled="isImporting"
+                            @click="openDesktopFileInput($event, INVENTORY_IMPORT_MAX_FILE_SIZE_BYTES, (files) => setImportFile(files[0]))"
                             @change="handleImportFileChange"
                         >
                     </label>
@@ -685,6 +686,7 @@
                                     type="file"
                                     accept="image/*"
                                     :disabled="isSubmitting"
+                                    @click="openDesktopFileInput($event, PRODUCT_IMAGE_MAX_SIZE_BYTES, setProductImageFiles)"
                                     @change="handleProductImageChange"
                                 >
                             </label>
@@ -791,6 +793,9 @@
 </template>
 
 <script setup lang="ts">
+import { escapeHtml } from "~/utils/highlightText";
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
+import { downloadBlob, downloadWorkbook, openDesktopFileInput } from "~/utils/fileActions";
 import type {
     InventoryCategory,
     InventoryLocation,
@@ -1406,12 +1411,7 @@ const downloadCsv = (headers: string[], rows: unknown[][], filename: string) => 
         .map((row) => row.map(toCsvValue).join(","))
         .join("\n");
     const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    return downloadBlob(blob, filename);
 };
 
 const buildCsvFile = (headers: string[], rows: unknown[][], filename: string) => {
@@ -1646,7 +1646,7 @@ const prepareProductImportCsv = async (file: File): Promise<CsvValidationResult 
     }
 
     if (errors.length) {
-        await erpMessageBox.alert(errors.slice(0, 20).join("<br/>"), "导入数据检查失败", {
+        await erpMessageBox.alert(errors.slice(0, 20).map(escapeHtml).join("<br/>"), "导入数据检查失败", {
             confirmButtonText: "知道了",
             type: "warning",
             dangerouslyUseHTMLString: true,
@@ -2623,7 +2623,7 @@ const downloadProductImportTemplate = async () => {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "产品导入模板");
-    XLSX.writeFile(wb, "产品导入模板.xlsx");
+    await downloadWorkbook(wb, "产品导入模板.xlsx");
 };
 
 const confirmImportProducts = async () => {
@@ -2665,7 +2665,7 @@ const confirmImportProducts = async () => {
         if (failCount > 0 && Array.isArray(data?.errors) && data.errors.length > 0) {
             const detail = data.errors
                 .slice(0, 20)
-                .map((item: any) => `第${item.row}行：${item.message || "导入失败"}`)
+                .map((item: any) => escapeHtml(`第${item.row}行：${item.message || "导入失败"}`))
                 .join("<br/>");
             await erpMessageBox.alert(detail, "导入失败明细", {
                 confirmButtonText: "知道了",
@@ -2732,7 +2732,7 @@ const exportProducts = async () => {
             product.updatedBy || "",
             product.updatedAt || "",
         ]);
-        downloadCsv(headers, rows, `产品导出_选中_${new Date().toISOString().slice(0, 10)}.csv`);
+        await downloadCsv(headers, rows, `产品导出_选中_${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (err: any) {
         handleApiError(err, "导出产品失败");
     } finally {

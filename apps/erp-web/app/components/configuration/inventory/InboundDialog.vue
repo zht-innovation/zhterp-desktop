@@ -93,7 +93,7 @@
                                                 >
                                                     <img
                                                         v-if="product.image"
-                                                        :src="product.image"
+                                                        :src="resolveErpImageUrl(product.image)"
                                                         :alt="product.productName"
                                                     >
                                                     <span v-else class="purchase-order-option__image-placeholder">
@@ -263,7 +263,7 @@
                             <div class="table-cell product-cell image-cell">
                                 <img
                                     v-if="product.image"
-                                    :src="product.image"
+                                    :src="resolveErpImageUrl(product.image)"
                                     :alt="product.model"
                                     class="clickable-image"
                                     @click.stop="openImagePreview(product.image, product.model || product.productCode)"
@@ -327,6 +327,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import InventoryDatePicker from "~/components/configuration/inventory/InventoryDatePicker.vue";

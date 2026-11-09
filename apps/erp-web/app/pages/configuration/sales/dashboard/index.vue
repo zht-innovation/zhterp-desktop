@@ -27,7 +27,7 @@
                             <div class="avatar-row">
                                 <el-avatar
                                     class="avatar"
-                                    :src="person.avatar || undefined"
+                                    :src="resolveErpImageUrl(person.avatar || undefined)"
                                     style="background:#d9ecff; color:#409eff;"
                                 >
                                     {{ getNameInitial(person.name) }}
@@ -98,7 +98,7 @@
                                 <el-avatar
                                     class="avatar"
                                     :size="30"
-                                    :src="log.avatar || undefined"
+                                    :src="resolveErpImageUrl(log.avatar || undefined)"
                                     style="background:#fde2e2; color:#f56c6c;"
                                 >
                                     {{ getNameInitial(log.salesperson) }}
@@ -599,6 +599,7 @@
 </style>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { ref, computed, onMounted } from 'vue'
 import { retrieveApplicationList } from '~/composables/api/useAppApi'
 import { retrieveSalespersonList } from '~/composables/api/useSalespersonApi'

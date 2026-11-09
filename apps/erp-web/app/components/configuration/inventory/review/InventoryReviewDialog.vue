@@ -42,7 +42,7 @@
                                     <td>{{ product.model }}<span v-if="product.issue" class="field-error">{{ product.issue }}</span></td>
                                     <td>
                                         <div class="item-image">
-                                            <img v-if="product.image" :src="product.image" :alt="product.model">
+                                            <img v-if="product.image" :src="resolveErpImageUrl(product.image)" :alt="product.model">
                                             <Icon v-else name="lucide:package" aria-hidden="true" />
                                         </div>
                                     </td>
@@ -161,7 +161,7 @@
                                                         </td>
                                                         <td>
                                                             <div class="item-image material-image">
-                                                                <img v-if="row.material.image" :src="row.material.image" :alt="row.material.model">
+                                                                <img v-if="row.material.image" :src="resolveErpImageUrl(row.material.image)" :alt="row.material.model">
                                                                 <Icon v-else name="lucide:package" aria-hidden="true" />
                                                             </div>
                                                         </td>
@@ -253,6 +253,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { ElMessage } from "element-plus";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import InventoryReviewPositionsDialog from "./InventoryReviewPositionsDialog.vue";

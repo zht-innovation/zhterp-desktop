@@ -139,7 +139,7 @@
                                                 <img
                                                     v-for="(image, imageIndex) in getOrderImageUrls(order)"
                                                     :key="`${image}-${imageIndex}`"
-                                                    :src="image"
+                                                    :src="resolveErpImageUrl(image)"
                                                     :alt="`示例图片${imageIndex + 1}`"
                                                 />
                                             </div>
@@ -170,7 +170,7 @@
                                             <td v-for="column in visibleCustomProductColumns" :key="column.key">
                                                 <template v-if="column.key === 'customProductImage'">
                                                     <span class="custom-product-image">
-                                                        <img v-if="product.image" :src="product.image" alt="" />
+                                                        <img v-if="product.image" :src="resolveErpImageUrl(product.image)" alt="" />
                                                         <span v-else></span>
                                                     </span>
                                                 </template>
@@ -303,7 +303,7 @@
                                                 <img
                                                     v-for="(image, imageIndex) in getOrderImageUrls(order)"
                                                     :key="`${image}-${imageIndex}`"
-                                                    :src="image"
+                                                    :src="resolveErpImageUrl(image)"
                                                     :alt="`示例图片${imageIndex + 1}`"
                                                 />
                                             </div>
@@ -529,6 +529,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { getSalesOrderPaymentPlans, getSalesOrderPaymentTotals } from "~~/shared/utils/salesOrderPayment";
 import { getSalesOrderDeliveryDate } from "~~/shared/utils/salesOrderDelivery";
 

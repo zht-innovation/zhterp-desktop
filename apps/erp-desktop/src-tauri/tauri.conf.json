@@ -3,11 +3,34 @@
     "productName": "ZH ERP",
     "version": "0.1.0",
     "identifier": "com.zhtaero.erp",
+    "build": {
+        "frontendDist": "../../erp-web/.output/desktop/public",
+        "beforeDevCommand": {
+            "cwd": "../../erp-web",
+            "script": "npm run --workspaces=false build:desktop",
+            "wait": true
+        },
+        "beforeBuildCommand": {
+            "cwd": "../../erp-web",
+            "script": "npm run --workspaces=false build:desktop"
+        }
+    },
     "app": {
         "windows": [],
         "withGlobalTauri": false,
         "security": {
-            "capabilities": []
+            "capabilities": ["erp-desktop-local"],
+            "csp": {
+                "default-src": "'self'",
+                "script-src": "'self'",
+                "connect-src": "'self' ipc: https://ipc.localhost http://ipc.localhost",
+                "img-src": "'self' data: blob: https://server.zhtaero.com",
+                "font-src": "'self' data:",
+                "style-src": "'self' 'unsafe-inline'",
+                "frame-src": "'none'",
+                "object-src": "'none'",
+                "base-uri": "'none'"
+            }
         }
     },
     "bundle": {

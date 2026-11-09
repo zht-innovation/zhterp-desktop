@@ -10,7 +10,7 @@
         @closed="emit('closed')"
     >
         <div class="attachment-image-preview-frame">
-            <img v-if="src" :src="src" :alt="title" />
+            <img v-if="src" :src="resolveErpImageUrl(src)" :alt="title" />
         </div>
         <template v-if="$slots.footer" #footer>
             <slot name="footer" />
@@ -19,6 +19,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 const props = withDefaults(defineProps<{
     modelValue: boolean
     title: string

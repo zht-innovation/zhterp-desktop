@@ -109,7 +109,7 @@
                                 <div class="items-cell col-image">
                                     <img
                                         v-if="item.image"
-                                        :src="item.image"
+                                        :src="resolveErpImageUrl(item.image)"
                                         class="product-thumb"
                                         :alt="item.model || item.productCode || '产品图片'"
                                         role="button"
@@ -153,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import ImagePreviewDialog from "~/components/configuration/inventory/ImagePreviewDialog.vue";
 import type { PreviewImage } from "~/components/configuration/inventory/ImagePreviewDialog.vue";

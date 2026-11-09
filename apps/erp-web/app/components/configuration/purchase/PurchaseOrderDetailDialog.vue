@@ -89,7 +89,7 @@
                         <h3>附件</h3>
                         <ul v-if="attachments.length" class="attachment-list">
                             <li v-for="(attachment, index) in attachments" :key="`${attachment.url}-${index}`">
-                                <a v-if="attachment.href" :href="attachment.href" target="_blank" rel="noopener noreferrer">{{ attachment.label }}</a>
+                                <a v-if="attachment.href" :href="attachment.href" target="_blank" rel="noopener noreferrer" @click="handleAttachmentClick($event, attachment.href, attachment.label)">{{ attachment.label }}</a>
                                 <span v-else>{{ attachment.label }}</span>
                             </li>
                         </ul>
@@ -106,6 +106,8 @@
 </template>
 
 <script setup lang="ts">
+import { downloadAttachmentFile, toAbsoluteAttachmentUrl } from "~/utils/attachmentPreview";
+import { getDesktopErpOrigin, isDesktop } from "~/utils/desktop";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import type { PurchaseOrder } from "~~/shared/types/purchase";
 import { canViewPurchasePrice, isElectronicsWarehouseKeeper } from "~~/shared/utils/adminPermission";
@@ -210,13 +212,21 @@ const productRows = computed(() => {
 
 const getAttachmentHref = (value: string) => {
     const url = value.trim();
-    if (url.startsWith("/") && !url.startsWith("//") && !url.includes("\\")) return url;
+    if (url.startsWith("/") && !url.startsWith("//") && !url.includes("\\")) {
+        return isDesktop() ? toAbsoluteAttachmentUrl(url, "") : url;
+    }
     try {
         const parsed = new URL(url);
         return ["https:", "http:"].includes(parsed.protocol) ? parsed.href : "";
     } catch {
         return "";
     }
+};
+
+const handleAttachmentClick = (event: MouseEvent, href: string, label: string) => {
+    if (!isDesktop() || new URL(href).origin !== getDesktopErpOrigin()) return;
+    event.preventDefault();
+    void downloadAttachmentFile(href, label).catch(() => ElMessage.error("附件下载失败"));
 };
 
 const attachments = computed(() => (props.order?.attachments || []).map((attachment, index) => ({

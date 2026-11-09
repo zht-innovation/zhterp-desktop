@@ -10,5 +10,15 @@ tauri-build = { version = "2", features = [] }
 url = "2"
 
 [dependencies]
-tauri = { version = "2", features = [] }
+base64 = "0.22"
+keyring = { version = "3.6.3", features = ["apple-native", "windows-native"] }
+percent-encoding = "2"
+regex = "1"
+reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls-native-roots"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tauri = { version = "2.11.1", features = [] }
+tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
+tempfile = "3"

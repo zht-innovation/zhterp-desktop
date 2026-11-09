@@ -1,9 +1,15 @@
 import { clearAdminSession, getToken } from "~/utils/auth";
+import { desktopFetch, getDesktopErpOrigin, initializeDesktop } from "~/utils/desktop";
 
-export default defineNuxtPlugin((nuxtApp) => {
+export default defineNuxtPlugin(async (nuxtApp) => {
     const { startLoading, stopLoading, setSlow, state } = useGlobalLoading()
     const router = useRouter()
-    const originalFetch = $fetch
+    const desktop = useRuntimeConfig().public.erpDesktop === true
+    if (desktop) {
+        const connectionMessage = useState("erp-desktop-connection", () => "")
+        await initializeDesktop(message => { connectionMessage.value = message })
+    }
+    const originalFetch = desktop ? $fetch.create({ retry: 0 }, { fetch: desktopFetch }) : $fetch
     let slowTimer: ReturnType<typeof setTimeout> | null = null
 
     const clearSlowTimer = () => {
@@ -41,16 +47,20 @@ export default defineNuxtPlugin((nuxtApp) => {
             return await originalFetch(request, options)
         } catch (error: any) {
             const requestToken = new Headers(options?.headers ?? (request instanceof Request ? request.headers : undefined)).get('Token')
-            const requestUrl = new URL(request instanceof Request ? request.url : String(request), window.location.origin)
-            if (error?.statusCode === 401 && requestToken && requestUrl.origin === window.location.origin) {
+            const requestOrigin = desktop ? getDesktopErpOrigin() : window.location.origin
+            const requestUrl = requestOrigin
+                ? new URL(request instanceof Request ? request.url : String(request), requestOrigin)
+                : null
+            if (error?.statusCode === 401 && requestToken && requestUrl?.origin === requestOrigin) {
                 await nuxtApp.runWithContext(async () => {
                     // An old in-flight request must not clear a newly signed-in account.
                     if (getToken() !== requestToken) return
                     const route = router.currentRoute.value
-                    clearAdminSession()
+                    const cleared = clearAdminSession()
                     if (route.path.startsWith('/configuration')) {
                         await navigateTo('/admin?redirect=' + encodeURIComponent(route.fullPath))
                     }
+                    await cleared
                 })
             }
             throw error

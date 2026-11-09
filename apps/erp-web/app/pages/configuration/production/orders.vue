@@ -108,7 +108,7 @@
                             <table class="detail-table product-detail-table">
                                 <thead><tr><th>图片</th><th>产品型号 / 编号</th><th>备注</th><th>材质</th><th>分类</th><th>订单数量</th><th>库存锁定</th><th>净生产需求</th><th>有效已下达</th><th>待下达</th><th>生产入库</th><th>已备货</th></tr></thead>
                                 <tbody><tr v-for="product in selectedOrder.products" :key="product.code">
-                                    <td><div class="product-thumbnail"><img v-if="product.image && !failedProductImages.has(product.image)" :src="product.image" :alt="`${product.name} 产品图片`" loading="lazy" @error="failedProductImages.add(product.image)" /><Icon v-else name="lucide:box" /></div></td>
+                                    <td><div class="product-thumbnail"><img v-if="product.image && !failedProductImages.has(product.image)" :src="resolveErpImageUrl(product.image)" :alt="`${product.name} 产品图片`" loading="lazy" @error="failedProductImages.add(product.image)" /><Icon v-else name="lucide:box" /></div></td>
                                     <td><strong>{{ product.name }}</strong><small>{{ product.code }} · {{ product.unit }}</small></td>
                                     <td class="product-remark">{{ product.remark || '--' }}</td>
                                     <td>{{ product.material || '未维护' }}</td><td>{{ product.category || '未分类' }}</td>
@@ -199,6 +199,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import type { ProductionOverviewOrder } from "~/types/production";
 import { getToken } from "~/utils/auth";
 import FileUploader from "~/components/configuration/sales/FileUploader.vue";

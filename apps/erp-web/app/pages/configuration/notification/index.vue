@@ -105,7 +105,7 @@
 
                     <!-- 空状态 -->
                     <div v-if="announcementList.length === 0 && !loading" class="empty-state">
-                        <Icon name="mdi:bullhorn-off-outline" class="empty-icon" />
+                        <Icon name="lucide:megaphone-off" class="empty-icon" />
                         <p>暂无公告</p>
                     </div>
                 </div>

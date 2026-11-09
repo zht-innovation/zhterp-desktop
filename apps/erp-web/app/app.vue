@@ -6,6 +6,13 @@
 
     <SystemUpdateDialog />
 
+    <div v-if="desktop && desktopConnection" class="desktop-connection" role="status">
+        <span>{{ desktopConnection }}</span>
+        <button type="button" :disabled="isReconnecting" @click="retryDesktopConnection">
+            {{ isReconnecting ? '正在连接' : '重试连接' }}
+        </button>
+    </div>
+
     <div v-if="isLoading" class="global-loading">
         <div class="loading-bar"></div>
         <div class="loading-mask"></div>
@@ -14,6 +21,8 @@
 </template>
 
 <script setup lang="ts">
+import { getToken, verifyDesktopSession } from "~/utils/auth";
+import { getDesktopErpOrigin, initializeDesktop } from "~/utils/desktop";
 import {
     PRIVATE_PAGE_ROBOTS_CONTENT,
     isPrivateAppRoute,
@@ -57,8 +66,63 @@ const remScript = `
 `;
 
 const route = useRoute();
+const router = useRouter();
+const nuxtApp = useNuxtApp();
+const desktop = useRuntimeConfig().public.erpDesktop === true;
+const desktopConnection = useState("erp-desktop-connection", () => "");
+const isReconnecting = ref(false);
+
+async function checkDesktopConnection(probe: boolean) {
+    if (isReconnecting.value) return;
+    isReconnecting.value = true;
+    try {
+        if (!getDesktopErpOrigin()) {
+            await initializeDesktop(message => { desktopConnection.value = message; });
+            if (!getDesktopErpOrigin()) return;
+        }
+        const wasSignedIn = Boolean(nuxtApp.runWithContext(getToken));
+        const restored = await nuxtApp.runWithContext(() => verifyDesktopSession(probe));
+        if (restored && route.path === "/admin") {
+            const redirect = String(route.query.redirect || "");
+            await router.push(redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/configuration");
+        } else if (wasSignedIn && !nuxtApp.runWithContext(getToken) && route.path.startsWith("/configuration")) {
+            await router.push({ path: "/admin", query: { redirect: route.fullPath } });
+        }
+    } catch {
+        if (!desktopConnection.value) desktopConnection.value = "无法连接 ERP 服务，请稍后重试。";
+    } finally {
+        isReconnecting.value = false;
+    }
+}
+
+const retryDesktopConnection = () => checkDesktopConnection(true);
+
+const updateDesktopRem = () => {
+    const root = document.documentElement;
+    root.style.fontSize = (16 * root.clientWidth / 1920) + "px";
+};
+
+const showDesktopOffline = () => {
+    desktopConnection.value = "网络不可用，请检查连接后重试。";
+};
+
+if (desktop) {
+    onMounted(() => {
+        updateDesktopRem();
+        window.addEventListener("resize", updateDesktopRem);
+        window.addEventListener("pageshow", updateDesktopRem);
+        window.addEventListener("offline", showDesktopOffline);
+        if (navigator.onLine && getDesktopErpOrigin()) void checkDesktopConnection(false);
+    });
+    onUnmounted(() => {
+        window.removeEventListener("resize", updateDesktopRem);
+        window.removeEventListener("pageshow", updateDesktopRem);
+        window.removeEventListener("offline", showDesktopOffline);
+    });
+}
+
 useHead(() => ({
-    script: [
+    script: desktop ? [] : [
         {
             key: "rem-script",
             innerHTML: remScript,
@@ -93,6 +157,27 @@ const isSlow = computed(() => state.value.slow)
 </script>
 
 <style scoped>
+.desktop-connection {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 10000;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 14px;
+    border: 1px solid #e6a23c;
+    border-radius: 6px;
+    background: #fdf6ec;
+    color: #8a521a;
+    font-size: 14px;
+}
+
+.desktop-connection button {
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
 /* Nuxt 过渡效果的类名稍有不同 */
 .fade-enter-active,
 .fade-leave-active {

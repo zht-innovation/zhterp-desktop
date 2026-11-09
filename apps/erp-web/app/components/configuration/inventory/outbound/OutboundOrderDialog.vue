@@ -140,6 +140,7 @@
                                             accept="image/*"
                                             multiple
                                             :disabled="fieldsReadonly || isUploadingImages"
+                                            @click="openDesktopFileInput($event, MAX_DESKTOP_OPEN_BYTES, readImageFiles)"
                                             @change="handleImageFileChange"
                                         >
                                         <div class="image-upload-panel">
@@ -162,7 +163,7 @@
                                                     class="uploaded-image-item"
                                                 >
                                                     <img
-                                                        :src="image.url"
+                                                        :src="resolveErpImageUrl(image.url)"
                                                         :alt="image.name"
                                                         class="uploaded-image-thumbnail clickable-image"
                                                         @click="openImagePreview(image.url, image.name || '订单照片')"
@@ -453,7 +454,7 @@
                                 <div class="table-cell detail-cell image-cell">
                                     <img
                                         v-if="item.image"
-                                        :src="item.image"
+                                        :src="resolveErpImageUrl(item.image)"
                                         :alt="item.model"
                                         class="clickable-image"
                                         @click.stop="openImagePreview(item.image, item.model || item.productNo || '产品图片')"
@@ -521,6 +522,8 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
+import { MAX_DESKTOP_OPEN_BYTES, openDesktopFileInput } from "~/utils/fileActions";
 import InventoryDatePicker from "~/components/configuration/inventory/InventoryDatePicker.vue";
 import InventoryInlineScanner from "~/components/configuration/inventory/InventoryInlineScanner.vue";
 import InventoryWarehouseCascader from "~/components/configuration/inventory/InventoryWarehouseCascader.vue";

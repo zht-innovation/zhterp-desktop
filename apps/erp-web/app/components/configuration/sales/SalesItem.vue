@@ -1,7 +1,7 @@
 <template>
     <div class="sales-item">
         <div class="avatar-col">
-            <el-avatar class="avatar" ref="avatarDom" :src="avatarUrl"></el-avatar>
+            <el-avatar class="avatar" ref="avatarDom" :src="resolveErpImageUrl(avatarUrl)"></el-avatar>
             <div class="name-cn" v-html="highlightText(salesperson.nameCn, 'nameCn', 'name')"></div>
             <div class="name-en" v-html="highlightText(salesperson.nameEn, 'nameEn', 'name')"></div>
         </div>
@@ -75,6 +75,8 @@
 </template>
 
 <script setup lang="ts">
+import { highlightTextHtml } from "~/utils/highlightText";
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { updateSalesperson } from '~/composables/api/useSalespersonApi'
 import useDrop from '~/composables/useDrop'
 import type { Ref } from 'vue'
@@ -149,37 +151,15 @@ const goToLogs = () => {
 
 // 高亮文本函数
 const highlightText = (text: string | undefined, ...fields: string[]) => {
-    if (!text || !props.highlightKeyword) return text || ''
-    
-    // 检查是否有任一字段匹配
-    const isMatched = !props.matchedFields || 
-                      props.matchedFields.length === 0 || 
-                      fields.some(field => props.matchedFields?.includes(field))
-    if (!isMatched) {
-        return text
-    }
-
-    const regex = new RegExp(`(${escapeRegExp(props.highlightKeyword)})`, 'gi')
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>')
+    const isMatched = !props.matchedFields || props.matchedFields.length === 0
+        || fields.some(field => props.matchedFields?.includes(field))
+    return highlightTextHtml(text || '', isMatched ? props.highlightKeyword : undefined)
 }
 
 // 高亮数组文本
-const highlightArrayText = (arr: string[] | undefined, field: string) => {
-    if (!arr || !Array.isArray(arr) || arr.length === 0) return ''
-    
-    const isMatched = !props.matchedFields || props.matchedFields.length === 0 || props.matchedFields.includes(field)
-    if (!isMatched || !props.highlightKeyword) {
-        return arr.join('、')
-    }
+const highlightArrayText = (arr: string[] | undefined, field: string) =>
+    Array.isArray(arr) ? arr.map(item => highlightText(item, field)).join('、') : ''
 
-    const regex = new RegExp(`(${escapeRegExp(props.highlightKeyword)})`, 'gi')
-    return arr.map(item => item.replace(regex, '<mark class="search-highlight">$1</mark>')).join('、')
-}
-
-// 转义正则特殊字符
-const escapeRegExp = (string: string) => {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 </script>
 
 <style lang="less" scoped>

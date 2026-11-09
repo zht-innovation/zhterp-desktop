@@ -208,7 +208,7 @@
                                 <div class="table-cell stocktake-item-cell image-cell">
                                     <img
                                         v-if="item.productImage"
-                                        :src="item.productImage"
+                                        :src="resolveErpImageUrl(item.productImage)"
                                         class="clickable-image"
                                         :alt="item.productModel || item.productCode || '产品图片'"
                                         @click.stop="openImagePreview(item.productImage, item.productModel || item.productCode || '产品图片')"
@@ -274,6 +274,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { ADMIN_ROLE } from "~~/shared/enums";
 import ErpBreadcrumb from "~/components/configuration/ErpBreadcrumb.vue";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";

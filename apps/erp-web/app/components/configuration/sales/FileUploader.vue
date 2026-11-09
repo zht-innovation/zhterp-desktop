@@ -20,7 +20,7 @@
             :multiple="multiple"
             :accept="accept"
             class="file-input-hidden"
-            @click.stop
+            @click.stop="openDesktopFileInput($event, maxSize * 1024 * 1024, addFiles)"
             @change="handleFileSelect"
         />
         <div class="file-list" v-if="files.length > 0">
@@ -38,7 +38,7 @@
                     <Icon name="mdi:eye" />
                 </button>
                 <button
-                    v-else
+                    v-else-if="!isDesktop()"
                     class="preview-btn"
                     type="button"
                     title="查看"
@@ -72,6 +72,8 @@
 
 <script setup lang="ts">
 import AttachmentImagePreview from '~/components/configuration/sales/AttachmentImagePreview.vue'
+import { isDesktop } from '~/utils/desktop'
+import { downloadBlob, openDesktopFileInput } from '~/utils/fileActions'
 import {
     getAttachmentFileName,
     getAttachmentPath,
@@ -241,20 +243,13 @@ const openFile = (file: UploaderAttachment) => {
     window.open(url, '_blank', 'noopener')
 }
 
-const downloadLocalFile = (file: File) => {
-    const url = URL.createObjectURL(file)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = file.name
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-}
-
 const downloadFile = async (file: UploaderAttachment) => {
     if (file instanceof File) {
-        downloadLocalFile(file)
+        try {
+            await downloadBlob(file, file.name)
+        } catch {
+            ElMessage.error('附件下载失败')
+        }
         return
     }
 

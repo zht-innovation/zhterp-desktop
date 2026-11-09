@@ -79,7 +79,7 @@
                 <div class="table-cell image-cell">
                     <img
                         v-if="row.image"
-                        :src="row.image"
+                        :src="resolveErpImageUrl(row.image)"
                         :alt="row.model || row.productCode || '产品图片'"
                         class="clickable-image"
                         @click.stop="openImagePreview(row.image, row.model || row.productCode || '产品图片')"
@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import ImagePreviewDialog from "~/components/configuration/inventory/ImagePreviewDialog.vue";
 import type { PreviewImage } from "~/components/configuration/inventory/ImagePreviewDialog.vue";

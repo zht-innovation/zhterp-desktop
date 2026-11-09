@@ -108,7 +108,7 @@
                                     @click="openSourceOrderImages(source)"
                                 >
                                     <img
-                                        :src="getSourceOrderThumbnailUrl(source)"
+                                        :src="resolveErpImageUrl(getSourceOrderThumbnailUrl(source))"
                                         :alt="`${source.orderNo || '订单'}图片`"
                                     >
                                     <span v-if="getSourceOrderImageCount(source) > 1">
@@ -385,6 +385,7 @@ import {
 import {
     getAttachmentPath,
     type AttachmentPreviewSource,
+    resolveErpImageUrl,
 } from "~/utils/attachmentPreview";
 
 definePageMeta({

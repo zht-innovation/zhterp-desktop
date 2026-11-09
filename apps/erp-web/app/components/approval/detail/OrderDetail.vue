@@ -137,7 +137,7 @@
                             type="button"
                             @click="openImagePreview(product.image, product.model || '')"
                         >
-                            <img :src="product.image" :alt="product.model || ''">
+                            <img :src="resolveErpImageUrl(product.image)" :alt="product.model || ''">
                         </button>
                         <Icon v-else name="lucide:image" />
                     </div>
@@ -186,6 +186,8 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
+import { downloadBlob } from "~/utils/fileActions";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import ImagePreviewDialog from "~/components/configuration/inventory/ImagePreviewDialog.vue";
 import type { PreviewImage } from "~/components/configuration/inventory/ImagePreviewDialog.vue";
@@ -255,17 +257,7 @@ const downloadProductExcel = async (product: SalesOrderProductSnapshot, index: n
             || product.productCode !== productCode
             || !canDownloadProduct(product)) return;
 
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        try {
-            link.href = url;
-            link.download = `产品标号_${productCode}_${index + 1}.xlsx`;
-            document.body.appendChild(link);
-            link.click();
-        } finally {
-            link.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
+        await downloadBlob(blob, `产品标号_${productCode}_${index + 1}.xlsx`);
     } catch (error: any) {
         let data = error?.data;
         if (data instanceof Blob) {

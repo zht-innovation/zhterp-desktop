@@ -1,3 +1,7 @@
+import { getToken } from "~/utils/auth";
+import { desktopFetch, getDesktopErpOrigin, isDesktop } from "~/utils/desktop";
+import { downloadBlob } from "~/utils/fileActions";
+
 export type AttachmentPreviewSource =
     | string
     | {
@@ -50,31 +54,47 @@ export const isImageAttachment = (attachment: AttachmentPreviewSource) => {
 
 export const toAbsoluteAttachmentUrl = (path: string, origin: string) => {
     if (!path) return "";
+    if (isDesktop()) {
+        try {
+            const url = new URL(path, getDesktopErpOrigin());
+            return url.protocol === "https:" && !url.username && !url.password ? url.href : "";
+        } catch {
+            return "";
+        }
+    }
     if (path.startsWith("http://") || path.startsWith("https://")) {
         return path;
     }
     return `${origin}/${path.replace(/^\/+/, "")}`;
 };
 
+export const resolveErpImageUrl = (path?: string | null) => {
+    if (!path || !isDesktop()) return path || "";
+    if (path.startsWith("/_erp-assets/") || /^(?:blob:|data:image\/)/i.test(path)) return path;
+    return toAbsoluteAttachmentUrl(path, "");
+};
+
 export const downloadAttachmentFile = async (url: string, filename?: string) => {
     if (!url) return;
     const fullUrl = toAbsoluteAttachmentUrl(url, window.location.origin);
-    const sameOrigin = new URL(fullUrl).origin === window.location.origin;
+    if (!fullUrl) throw new Error("附件地址无效");
+    const attachmentUrl = new URL(fullUrl);
+    const desktopOrigin = isDesktop() ? getDesktopErpOrigin() : "";
+    const sameOrigin = attachmentUrl.origin === (desktopOrigin || window.location.origin);
+
+    if (desktopOrigin && sameOrigin) {
+        const token = attachmentUrl.pathname.startsWith("/main/") ? "" : getToken();
+        const response = await desktopFetch(attachmentUrl, { headers: token ? { Token: token } : undefined });
+        if (!response.ok) throw new Error("下载失败");
+        await downloadBlob(await response.blob(), filename || getAttachmentFileName(url));
+        return;
+    }
 
     if (sameOrigin || isImageAttachment(filename || url)) {
         const response = await fetch(fullUrl, sameOrigin ? { mode: "same-origin" } : undefined);
         if (!response.ok) throw new Error("下载失败");
 
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = filename || getAttachmentFileName(url);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
+        await downloadBlob(await response.blob(), filename || getAttachmentFileName(url));
         return;
     }
 

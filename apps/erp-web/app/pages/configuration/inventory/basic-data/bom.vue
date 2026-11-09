@@ -248,6 +248,7 @@
                             type="file"
                             accept=".xlsx"
                             :disabled="isImportingBom"
+                            @click="openDesktopFileInput($event, INVENTORY_IMPORT_MAX_FILE_SIZE_BYTES, (files) => setImportFile(files[0]))"
                             @change="handleImportFileChange"
                         >
                     </label>
@@ -352,6 +353,8 @@
 </template>
 
 <script setup lang="ts">
+import { escapeHtml } from "~/utils/highlightText";
+import { downloadBlob, downloadWorkbook, openDesktopFileInput } from "~/utils/fileActions";
 import type {
     InventoryBom,
     InventoryProduct,
@@ -1402,17 +1405,6 @@ const toggleBomEnabled = async (bomId: string) => {
     }
 };
 
-const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-};
-
 const exportBoms = async () => {
     if (isExportingBom.value) {
         return;
@@ -1428,8 +1420,9 @@ const exportBoms = async () => {
             };
         const blob = await exportInventoryBoms(params);
 
-        downloadBlob(blob, `BOM导出_${new Date().toISOString().slice(0, 10)}.xlsx`);
-        ElMessage.success("导出BOM成功");
+        if (await downloadBlob(blob, `BOM导出_${new Date().toISOString().slice(0, 10)}.xlsx`)) {
+            ElMessage.success("导出BOM成功");
+        }
     } catch (err: any) {
         handleApiError(err, "导出BOM失败");
     } finally {
@@ -1553,7 +1546,7 @@ const downloadBomImportTemplate = async () => {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "BOM导入模板");
-    XLSX.writeFile(wb, "BOM导入模板.xlsx");
+    await downloadWorkbook(wb, "BOM导入模板.xlsx");
 };
 
 const confirmImportBoms = async () => {
@@ -1592,7 +1585,7 @@ const confirmImportBoms = async () => {
         if (data.errorCount > 0) {
             const errorMessages = data.errors.slice(0, 5).map((e) => `第${e.row}行: ${e.message}`).join("\n");
             erpMessageBox.alert(
-                `<div>成功导入 ${data.successCount} 条，失败 ${data.errorCount} 条</div><div style="margin-top:8px;font-size:12px;color:var(--erp-color-text-secondary);white-space:pre-line;">${errorMessages}</div>`,
+                `<div>成功导入 ${Number(data.successCount)} 条，失败 ${Number(data.errorCount)} 条</div><div style="margin-top:8px;font-size:12px;color:var(--erp-color-text-secondary);white-space:pre-line;">${escapeHtml(errorMessages)}</div>`,
                 "导入结果",
                 { dangerouslyUseHTMLString: true, confirmButtonText: "确定" },
             );

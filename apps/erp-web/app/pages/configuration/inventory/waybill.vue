@@ -261,7 +261,7 @@
                         <template v-if="column.key === 'image'">
                             <img
                                 v-if="waybill.images?.length"
-                                :src="waybill.images[0].url"
+                                :src="resolveErpImageUrl(waybill.images[0].url)"
                                 :alt="waybill.goods"
                                 class="clickable-image"
                                 @click="openImagePreview(waybill.images, 0, waybill.goods || waybill.trackingNo)"
@@ -623,6 +623,7 @@
                                     accept="image/*"
                                     multiple
                                     aria-label="上传图片"
+                                    @click="openDesktopFileInput($event, MAX_DESKTOP_OPEN_BYTES, readImageFiles)"
                                     @change="handleImageFileChange"
                                 >
                                 <Icon name="lucide:upload" class="upload-icon" />
@@ -657,6 +658,7 @@
                                     type="file"
                                     multiple
                                     aria-label="上传附件"
+                                    @click="openDesktopFileInput($event, MAX_DESKTOP_OPEN_BYTES, readAttachmentFiles)"
                                     @change="handleAttachmentFileChange"
                                 >
                                 <Icon name="lucide:upload" class="upload-icon" />
@@ -790,6 +792,7 @@
                                             accept="image/*"
                                             :disabled="isUploadingAcceptanceImages"
                                             aria-label="上传验收图片"
+                                            @click="selectAcceptanceImages"
                                             @change="handleAcceptanceImageChange"
                                         >
                                         <Icon name="lucide:upload" />
@@ -895,6 +898,7 @@
                                         :disabled="isUploadingAcceptanceEvidence"
                                         :aria-required="isAcceptanceEvidenceRequired"
                                         aria-label="上传异常材料"
+                                        @click="selectAcceptanceEvidence"
                                         @change="handleAcceptanceEvidenceChange"
                                     >
                                     <Icon name="lucide:upload" />
@@ -975,6 +979,7 @@
                             type="file"
                             accept=".xlsx"
                             :disabled="isImporting"
+                            @click="openDesktopFileInput($event, INVENTORY_IMPORT_MAX_FILE_SIZE_BYTES, (files) => setImportFile(files[0]))"
                             @change="handleImportFileChange"
                         >
                     </label>
@@ -1032,6 +1037,7 @@
 </template>
 
 <script setup lang="ts">
+import { downloadBlob, downloadWorkbook, MAX_DESKTOP_OPEN_BYTES, openDesktopFileInput } from "~/utils/fileActions";
 import { ADMIN_ROLE } from "~~/shared/enums";
 import type { InventoryWaybill, InventoryWaybillAttachment } from "~~/shared/types/inventory";
 import type {
@@ -1078,7 +1084,7 @@ import {
     buildInboundLocationTree,
     type InboundWarehouseOption,
 } from "~/utils/inventory/inboundFrontendMapping";
-import { downloadAttachmentFile } from "~/utils/attachmentPreview";
+import { downloadAttachmentFile, resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { erpMessageBox } from "~/utils/erpMessageBox";
 import { logisticsCompanyOptions } from "~/utils/logisticsCompanyOptions";
 import { formatLocalDate } from "~/utils/time";
@@ -2077,6 +2083,8 @@ const selectAcceptanceWarehouse = (
     item.targetWarehouse = label;
 };
 
+const ACCEPTANCE_FILE_MAX_BYTES = 10 * 1024 * 1024;
+
 const readAcceptanceFiles = async (
     files: File[],
     target: { value: PurchaseLogisticsAcceptanceAttachment[] },
@@ -2085,9 +2093,8 @@ const readAcceptanceFiles = async (
 ) => {
     if (!files.length || uploading.value) return;
 
-    const maxFileSize = 10 * 1024 * 1024;
     const validFiles = files.filter((file) => {
-        if (file.size <= maxFileSize) return true;
+        if (file.size <= ACCEPTANCE_FILE_MAX_BYTES) return true;
         ElMessage.warning(`${label} ${file.name} 不能超过10MB`);
         return false;
     });
@@ -2124,6 +2131,16 @@ const readAcceptanceFiles = async (
 
     if (successCount > 0) ElMessage.success(`${label}上传完成`);
 };
+
+const selectAcceptanceEvidence = (event: MouseEvent) =>
+    openDesktopFileInput(event, ACCEPTANCE_FILE_MAX_BYTES, (files) =>
+        readAcceptanceFiles(files, acceptanceAttachments, isUploadingAcceptanceEvidence, "异常材料"),
+    );
+
+const selectAcceptanceImages = (event: MouseEvent) =>
+    openDesktopFileInput(event, ACCEPTANCE_FILE_MAX_BYTES, (files) =>
+        readAcceptanceFiles(files, acceptanceImages, isUploadingAcceptanceImages, "验收图片"),
+    );
 
 const handleAcceptanceEvidenceChange = (event: Event) => {
     const input = event.target as HTMLInputElement;
@@ -2539,18 +2556,6 @@ const getWaybillAttachments = (waybill: WaybillItem) =>
         Boolean(attachment.name || attachment.url),
     );
 
-const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = filename || "附件";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url));
-};
-
 const downloadWaybillAttachments = async (waybill: WaybillItem) => {
     if (isSellerReadonly.value) return;
     const attachments = getWaybillAttachments(waybill);
@@ -2566,7 +2571,7 @@ const downloadWaybillAttachments = async (waybill: WaybillItem) => {
             ? attachments[0]?.name || `${waybill.waybillNo}-附件`
             : `${waybill.waybillNo}-附件.zip`;
 
-        downloadBlob(blob, filename);
+        await downloadBlob(blob, filename);
     } catch {
         ElMessage.error("附件下载失败，请稍后重试");
     }
@@ -2832,7 +2837,7 @@ const downloadWaybillImportTemplate = async () => {
     ws["!cols"] = headers.map(() => ({ wch: 16 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "运单记录导入模板");
-    XLSX.writeFile(wb, "运单记录导入模板.xlsx");
+    await downloadWorkbook(wb, "运单记录导入模板.xlsx");
 };
 
 const confirmImport = async () => {
@@ -2875,7 +2880,7 @@ const exportWaybills = async () => {
             endDate: selectedWaybillIds.value.length ? undefined : appliedEndDate.value || undefined,
             ids: selectedWaybillIds.value.length ? selectedWaybillIds.value.join(",") : undefined,
         });
-        downloadBlob(blob, selectedWaybillIds.value.length ? "选中运单记录.xlsx" : "运单记录.xlsx");
+        await downloadBlob(blob, selectedWaybillIds.value.length ? "选中运单记录.xlsx" : "运单记录.xlsx");
     } catch (err: any) {
         ElMessage.error(err?.data?.msg || err?.message || "导出运单记录失败");
     }

@@ -37,7 +37,7 @@
                     <span class="detail-label">产品图片</span>
                     <div class="detail-image-wrap">
                         <img
-                            :src="product.image || ''"
+                            :src="resolveErpImageUrl(product.image || '')"
                             :alt="product.model || product.id || '产品图片'"
                         >
                     </div>
@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ProductBarcodePrintDialog from "./ProductBarcodePrintDialog.vue";
 import ProductSnBatchPrintDialog from "./ProductSnBatchPrintDialog.vue";
 

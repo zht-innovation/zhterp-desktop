@@ -4,9 +4,9 @@
 
 | 工作区 | 用途 |
 | --- | --- |
-| `apps/erp-web` | Nuxt ERP 页面。原站入口由网关代理，桌面使用 ERP 域。 |
+| `apps/erp-web` | Nuxt ERP 页面。浏览器入口由网关代理，桌面构建从同一源码生成内置界面。 |
 | `apps/erp-api` | Nitro Node 服务。提供 ERP 业务接口和共享账号登录。 |
-| `apps/erp-desktop` | Tauri 2 客户端。构建时通过 `ERP_DESKTOP_ORIGIN` 绑定 HTTPS 域。 |
+| `apps/erp-desktop` | Tauri 2 客户端，内置静态界面，通过 Rust 访问构建时绑定的 ERP HTTPS API。 |
 | `packages/shared` | 从主站复用的类型、角色定义和权限工具。 |
 
 本次迁移的源码基线为主站 Git 提交 `d4942f9e416c935ad291b2288643e5f4b549e0ff`。正式切换前核对实际生产版本，并将其与本次迁移基线的业务差异纳入验收。自建站继续维护账号、密码、部门和角色分配。ERP 服务只读查询共享账号和部门。新增系统角色类型时，两仓同步角色定义和权限规则。

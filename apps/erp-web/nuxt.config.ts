@@ -36,7 +36,30 @@ export default defineNuxtConfig({
         "/configuration/**": { headers: { "Cache-Control": "private, no-store" } },
     },
     runtimeConfig: {
-        public: { mainSiteOrigin: "" },
+        public: { mainSiteOrigin: "", erpDesktop: false },
+    },
+    $env: {
+        desktop: {
+            telemetry: false,
+            runtimeConfig: { public: { erpDesktop: true } },
+            router: { options: { hashMode: true } },
+            experimental: { appManifest: false, payloadExtraction: false },
+            nitro: {
+                output: { dir: fileURLToPath(new URL("./.output/desktop", import.meta.url)) },
+                prerender: { routes: ["/"], crawlLinks: false },
+            },
+            icon: {
+                provider: "none",
+                serverBundle: false,
+                clientBundle: {
+                    scan: {
+                        globInclude: ["app/**/*.{vue,ts}"],
+                        additionalCollections: ["famicons"],
+                        ignoreCollections: ["el"],
+                    },
+                },
+            },
+        },
     },
     postcss: {
         plugins: {

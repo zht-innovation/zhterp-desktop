@@ -354,7 +354,7 @@
                             <span class="order-check-image-cell">
                                 <img
                                     v-if="row.image"
-                                    :src="row.image"
+                                    :src="resolveErpImageUrl(row.image)"
                                     :alt="row.productCode || row.model || '产品图片'"
                                     class="clickable-image"
                                     @click="openImagePreview(row.image, row.productCode || row.model || '产品图片')"
@@ -393,6 +393,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import type { PropType } from "vue";
 import type {
     InventoryCategory,

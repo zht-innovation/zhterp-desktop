@@ -10,7 +10,7 @@
                     shake: doAni
                 }" :style="{ padding: nopadding ? '0px' : '.667rem', transform: `translate(${translateX || '-50%'}, -50%)` }" @click.stop>
                     <slot :translateX="edit_translateX"></slot>
-                    <Icon name="bitcoin-icons:cross-filled" class="escbtn icon-x" v-if="escbtn" @click="closeFn" />
+                    <Icon name="lucide:x" class="escbtn icon-x" v-if="escbtn" @click="closeFn" />
                 </div>
             </div>
         </transition>

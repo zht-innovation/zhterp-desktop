@@ -22,7 +22,7 @@
                             <div v-if="!visibleRows.length" class="analysis-empty">暂无齐套分析结果</div>
                             <div v-for="row in visibleRows" :key="row.key" class="analysis-row analysis-data" :style="{ gridTemplateColumns: columns }">
                                 <div v-if="canShow('productImage')" class="analysis-image-cell">
-                                    <button v-if="row.image" type="button" :aria-label="`预览${productLabel(row)}图片`" @click="openImage(row)"><img :src="row.image" :alt="productLabel(row)" /></button>
+                                    <button v-if="row.image" type="button" :aria-label="`预览${productLabel(row)}图片`" @click="openImage(row)"><img :src="resolveErpImageUrl(row.image)" :alt="productLabel(row)" /></button>
                                     <Icon v-else name="material-symbols:image-outline" />
                                 </div>
                                 <div v-if="canShow('productModel')" class="analysis-model-cell" :title="productLabel(row)">{{ productLabel(row) }}</div>
@@ -49,6 +49,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ImagePreviewDialog, { type PreviewImage } from "~/components/configuration/inventory/ImagePreviewDialog.vue";
 import type { OrderKitAnalysisRow } from "~~/shared/types/orderKitAnalysis";
 import { normalizeOrderVisibleFields, type OrderApprovalField } from "~~/shared/types/orderApproval";

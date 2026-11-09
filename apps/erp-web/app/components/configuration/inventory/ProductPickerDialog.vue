@@ -161,7 +161,7 @@
                             <template v-if="column.key === 'image'">
                                 <img
                                     v-if="product.image"
-                                    :src="product.image"
+                                    :src="resolveErpImageUrl(product.image)"
                                     :alt="product.model || product.id"
                                     class="clickable-image"
                                     title="点击查看大图"
@@ -325,6 +325,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import type { InventoryProduct } from "~~/shared/types/inventory";
 import type {
     ProductPickerCategoryOption,

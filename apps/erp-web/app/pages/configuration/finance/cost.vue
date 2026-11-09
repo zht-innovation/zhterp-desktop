@@ -135,7 +135,7 @@
                     <div class="table-cell image-cell">
                         <img
                             v-if="item.image"
-                            :src="item.image"
+                            :src="resolveErpImageUrl(item.image)"
                             :alt="item.name"
                             class="clickable-image"
                             @click.stop="openImagePreview(item.image, item.model || item.code)"
@@ -215,7 +215,7 @@
                     <div class="table-cell image-cell">
                         <img
                             v-if="item.image"
-                            :src="item.image"
+                            :src="resolveErpImageUrl(item.image)"
                             :alt="item.name"
                             class="clickable-image"
                             @click.stop="openImagePreview(item.image, item.model || item.code)"
@@ -279,6 +279,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpBreadcrumb from "~/components/configuration/ErpBreadcrumb.vue";
 import ErpSearchBox from "~/components/configuration/ErpSearchBox.vue";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";

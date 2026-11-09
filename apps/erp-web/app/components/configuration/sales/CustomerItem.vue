@@ -389,6 +389,7 @@
 </template>
 
 <script setup lang="ts">
+import { highlightTextHtml } from "~/utils/highlightText";
 import { applyContact } from '~/composables/api/useAppApi'
 import { changeSalesperson, updateCustomer, fakeDelCustomer, deleteCustomer, recoverCustomer, unassignCustomer } from '~/composables/api/useCustomerApi'
 import { retrieveSalespersonList } from '~/composables/api/useSalespersonApi'
@@ -399,7 +400,7 @@ import AddCustomerDialog from '~/components/configuration/sales/AddCustomerDialo
 import AddOrderDialog from '~/components/configuration/sales/AddOrderDialog.vue'
 import AttachmentImagePreview from '~/components/configuration/sales/AttachmentImagePreview.vue'
 import CustomerTermHistoryDialog from '~/components/configuration/sales/CustomerTermHistoryDialog.vue'
-import { downloadAttachmentFile } from '~/utils/attachmentPreview'
+import { downloadAttachmentFile, resolveErpImageUrl, toAbsoluteAttachmentUrl } from '~/utils/attachmentPreview'
 
 const props = defineProps<{
     customer: any
@@ -482,7 +483,7 @@ watch(
     }
 )
 const avatarStyle = computed(() => ({
-    backgroundImage: `url(${avatarUrl.value || defaultAvatar})`,
+    backgroundImage: `url(${resolveErpImageUrl(avatarUrl.value) || defaultAvatar})`,
 }))
 
 const saveAvatar = async (path: string) => {
@@ -980,19 +981,9 @@ const handleRecover = async (customerId: string) => {
 
 // 高亮文本函数
 const highlightText = (text: string | undefined, ...fields: string[]) => {
-    if (!text || !props.highlightKeyword) return text || ''
-    
-    // 检查是否有任一字段匹配
-    const hasMatch = !props.matchedFields || 
-                     props.matchedFields.length === 0 || 
-                     fields.some(field => props.matchedFields?.includes(field))
-    
-    if (!hasMatch) {
-        return text
-    }
-
-    const regex = new RegExp(`(${escapeRegExp(props.highlightKeyword)})`, 'gi')
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>')
+    const hasMatch = !props.matchedFields || props.matchedFields.length === 0
+        || fields.some(field => props.matchedFields?.includes(field))
+    return highlightTextHtml(text || '', hasMatch ? props.highlightKeyword : undefined)
 }
 
 const highlightTagText = (tag: { label: string; type: string }) => {
@@ -1006,13 +997,9 @@ const highlightTagText = (tag: { label: string; type: string }) => {
                 : tag.type.startsWith('level-')
                     ? 'customerLevel'
                     : ''
-    return field ? highlightText(label, field) : label
+    return field ? highlightText(label, field) : highlightTextHtml(label)
 }
 
-// 转义正则特殊字符
-const escapeRegExp = (string: string) => {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 // 获取文件名称
 const getAttachmentPath = (attachment: CustomerAttachment) =>
@@ -1111,7 +1098,7 @@ const handleAttachmentClick = (attachment: CustomerAttachment) => {
     if (!attachmentPath) return
     if (isImageFile(attachment)) {
         // 如果是图片，打开预览弹窗
-        previewImageUrl.value = `${window.location.origin}/${attachmentPath.replace(/^\/+/, '')}`
+        previewImageUrl.value = toAbsoluteAttachmentUrl(attachmentPath, window.location.origin)
         previewFileName.value = getFileName(attachment)
         previewAttachmentPath.value = attachmentPath // 保存原始路径
         showImagePreview.value = true

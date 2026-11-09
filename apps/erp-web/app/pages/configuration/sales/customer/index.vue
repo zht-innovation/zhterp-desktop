@@ -327,6 +327,8 @@
 </template>
 
 <script setup lang="ts">
+import { escapeHtml } from "~/utils/highlightText";
+import { downloadBlob } from "~/utils/fileActions";
 import { Loading } from '@element-plus/icons-vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import AddCustomerDialog from '~/components/configuration/sales/AddCustomerDialog.vue'
@@ -1155,12 +1157,7 @@ const formatDealAmountForExport = (customer: any) =>
 const downloadCsv = (headers: string[], rows: string[][], filename: string) => {
     const csvContent = [headers, ...rows].map((row) => row.map(toCsvValue).join(',')).join('\n')
     const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.click()
-    URL.revokeObjectURL(url)
+    return downloadBlob(blob, filename)
 }
 
 const handleExportSelected = () => {
@@ -1209,7 +1206,7 @@ const handleExportSelected = () => {
     ])
 
     const filename = `客户导出_选中_${new Date().toISOString().slice(0, 10)}.csv`
-    downloadCsv(headers, rows, filename)
+    void downloadCsv(headers, rows, filename).catch(() => ElMessage.error('保存客户导出文件失败'))
 }
 
 // 导出逻辑
@@ -1329,7 +1326,7 @@ const handleExportCustomers = async () => {
         }
 
         const filename = `客户导出_${new Date().toISOString().slice(0, 10)}.csv`
-        downloadCsv(headers, rows, filename)
+        await downloadCsv(headers, rows, filename)
     } catch (err: any) {
         ElMessage.error(err?.data?.msg || err?.message || '批量导出失败')
     } finally {
@@ -1741,7 +1738,7 @@ const handleImportCustomers = async (file: File) => {
         if (failed > 0 && Array.isArray(result.errors) && result.errors.length > 0) {
             const detail = result.errors
                 .slice(0, 20)
-                .map((item: any) => `第${item.row}行：${item.message || item.msg || '导入失败'}`)
+                .map((item: any) => escapeHtml(`第${item.row}行：${item.message || item.msg || '导入失败'}`))
                 .join('<br/>')
             await ElMessageBox.alert(detail, '导入失败明细', {
                 confirmButtonText: '知道了',

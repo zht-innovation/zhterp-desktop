@@ -80,7 +80,7 @@
                                 </div>
                                 <div :title="line.category">{{ line.category || "--" }}</div>
                                 <div class="image-cell">
-                                    <img v-if="line.image" :src="line.image" :alt="line.productModel">
+                                    <img v-if="line.image" :src="resolveErpImageUrl(line.image)" :alt="line.productModel">
                                     <Icon v-else name="lucide:image" />
                                 </div>
                                 <div class="stack-cell">
@@ -181,7 +181,7 @@
                             <div class="supplier-product-images">
                                 <template v-if="supplier.products?.length">
                                     <template v-for="product in supplier.products" :key="product.productId">
-                                        <img v-if="product.image" :src="product.image" :alt="product.code">
+                                        <img v-if="product.image" :src="resolveErpImageUrl(product.image)" :alt="product.code">
                                         <Icon v-else name="lucide:image" />
                                     </template>
                                 </template>
@@ -290,6 +290,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import ProductPickerDialog from "~/components/configuration/inventory/ProductPickerDialog.vue";
 import type { ProductPickerColumn } from "~/components/configuration/inventory/ProductPickerDialog.vue";

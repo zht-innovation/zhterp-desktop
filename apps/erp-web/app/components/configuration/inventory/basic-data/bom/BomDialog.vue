@@ -144,7 +144,7 @@
                                 <template v-else-if="column.key === 'image'">
                                     <img
                                         v-if="item.product.image"
-                                        :src="item.product.image"
+                                        :src="resolveErpImageUrl(item.product.image)"
                                         :alt="item.product.model || item.product.id"
                                         class="clickable-image"
                                         @click.stop="openImagePreview(item.product.image, item.product.model || item.product.id)"
@@ -231,6 +231,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import ImagePreviewDialog from "~/components/configuration/inventory/ImagePreviewDialog.vue";

@@ -18,5 +18,18 @@ fn main() {
     );
 
     println!("cargo:rustc-env=ERP_DESKTOP_ORIGIN={origin}");
-    tauri_build::build();
+    println!("cargo:rerun-if-changed=../../erp-web/.output/desktop/public");
+
+    let manifest = tauri_build::AppManifest::new().commands(&[
+        "desktop_info",
+        "erp_request",
+        "upload_product_image",
+        "restore_desktop_session",
+        "save_desktop_session",
+        "clear_desktop_session",
+        "open_local_files",
+        "save_local_file",
+    ]);
+    let attributes = tauri_build::Attributes::new().app_manifest(manifest);
+    tauri_build::try_build(attributes).expect("failed to configure the ERP desktop build");
 }

@@ -279,6 +279,7 @@
                             type="file"
                             accept=".xlsx"
                             :disabled="isImporting"
+                            @click="openDesktopFileInput($event, INVENTORY_IMPORT_MAX_FILE_SIZE_BYTES, (files) => setImportFile(files[0]))"
                             @change="handleImportFileChange"
                         >
                     </label>
@@ -319,6 +320,7 @@
 </template>
 
 <script setup lang="ts">
+import { downloadBlob, downloadWorkbook, openDesktopFileInput } from "~/utils/fileActions";
 import InventoryDatePicker from "~/components/configuration/inventory/InventoryDatePicker.vue";
 import InventoryPagination from "~/components/configuration/inventory/basic-data/InventoryPagination.vue";
 import { getPaginationPageNumbers } from "~/composables/inventory/useInventoryPagination";
@@ -770,18 +772,7 @@ const downloadOutboundImportTemplate = async () => {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "出库单导入模板");
-    XLSX.writeFile(wb, "出库单导入模板.xlsx");
-};
-
-const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url));
+    await downloadWorkbook(wb, "出库单导入模板.xlsx");
 };
 
 const exportOutboundOrders = async () => {
@@ -792,7 +783,7 @@ const exportOutboundOrders = async () => {
             outboundDate: selectedOrderIds.value.length ? undefined : appliedOutboundDate.value || undefined,
             ids: selectedOrderIds.value.length ? selectedOrderIds.value.join(",") : undefined,
         });
-        downloadBlob(blob, selectedOrderIds.value.length ? "选中出库单.xlsx" : "出库单.xlsx");
+        await downloadBlob(blob, selectedOrderIds.value.length ? "选中出库单.xlsx" : "出库单.xlsx");
     } catch (err: any) {
         ElMessage.error(err?.data?.msg || err?.message || "导出出库单失败");
     }

@@ -252,6 +252,7 @@
                             type="file"
                             accept=".xlsx"
                             :disabled="isImporting"
+                            @click="openDesktopFileInput($event, INVENTORY_IMPORT_MAX_FILE_SIZE_BYTES, (files) => setImportFile(files[0]))"
                             @change="handleImportFileChange"
                         >
                     </label>
@@ -292,6 +293,7 @@
 </template>
 
 <script setup lang="ts">
+import { downloadBlob, downloadWorkbook, openDesktopFileInput } from "~/utils/fileActions";
 import { canEditInventoryInbound, canManageInventory } from "~~/shared/utils/adminPermission";
 import {
     INVENTORY_IMPORT_FILE_SIZE_MESSAGE,
@@ -1080,18 +1082,7 @@ const downloadInboundImportTemplate = async () => {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "入库单导入模板");
-    XLSX.writeFile(wb, "入库单导入模板.xlsx");
-};
-
-const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url));
+    await downloadWorkbook(wb, "入库单导入模板.xlsx");
 };
 
 const exportInboundOrders = async () => {
@@ -1106,7 +1097,7 @@ const exportInboundOrders = async () => {
             inboundDate: selectedBackendIds.length ? undefined : appliedInboundDate.value || undefined,
             ids: selectedBackendIds.length ? selectedBackendIds.join(",") : undefined,
         });
-        downloadBlob(blob, selectedInboundOrderIds.value.length ? "选中入库单.xlsx" : "入库单.xlsx");
+        await downloadBlob(blob, selectedInboundOrderIds.value.length ? "选中入库单.xlsx" : "入库单.xlsx");
     } catch (err: any) {
         ElMessage.error(err?.data?.msg || err?.message || "导出入库单失败");
     }

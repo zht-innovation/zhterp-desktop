@@ -42,6 +42,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
       - name: Prepare Rust targets
         shell: bash
         run: |
@@ -49,16 +53,14 @@ jobs:
           rustup target add --toolchain stable ${{ matrix.rust_targets }}
 
       - name: Install desktop dependencies
-        working-directory: apps/erp-desktop
-        run: npm install --workspaces=false --no-package-lock --no-audit --no-fund
+        run: npm install --workspace @zhterp/web --workspace @zhterp/desktop --no-package-lock --no-audit --no-fund
 
       - name: Build preview installer
-        working-directory: apps/erp-desktop
         shell: bash
         env:
           ERP_DESKTOP_ORIGIN: ${{ inputs.erp_origin }}
           APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
-        run: npm run --workspaces=false ${{ matrix.script }} -- --config src-tauri/tauri.staging.conf.json
+        run: npm run --workspace @zhterp/desktop ${{ matrix.script }} -- --config src-tauri/tauri.staging.conf.json
 
       - name: Write installer checksum
         shell: pwsh

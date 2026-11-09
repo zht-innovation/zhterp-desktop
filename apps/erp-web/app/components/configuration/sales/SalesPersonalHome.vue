@@ -392,6 +392,7 @@
 
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { nextTick } from 'vue'
 import { countryOptions } from '~/utils/countryOptions'
 import { updateSalesperson } from '~/composables/api/useSalespersonApi'
@@ -500,7 +501,7 @@ watch(
 
 const avatarDom = ref() as Ref<HTMLElement>
 const avatarStyle = computed(() =>
-    localProfile.value.avatar ? { backgroundImage: `url(${localProfile.value.avatar})` } : {}
+    localProfile.value.avatar ? { backgroundImage: `url(${resolveErpImageUrl(localProfile.value.avatar)})` } : {}
 )
 
 const saveAvatar = async (path: string) => {

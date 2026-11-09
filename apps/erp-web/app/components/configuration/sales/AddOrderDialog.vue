@@ -12,7 +12,7 @@
             >
                 <div class="dialog-body">
                     <div v-if="isEditLocked" class="rejection-banner">
-                        <Icon name="material-symbols:lock-outline-rounded" />
+                        <Icon name="material-symbols:lock-outline" />
                         <div>
                             <strong>订单已锁定</strong>
                             <span>{{ SALES_ORDER_REJECTION_LOCK_MESSAGE }}</span>
@@ -314,7 +314,7 @@
                                     <div class="product-image">
                                         <img
                                             v-if="product.image"
-                                            :src="product.image"
+                                            :src="resolveErpImageUrl(product.image)"
                                             :alt="product.model || product.productCode || '产品图片'"
                                             title="点击查看大图"
                                             @click.stop="openProductImagePreview(product.image, product.model || product.productCode || '产品图片')"
@@ -386,6 +386,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import OrderKitAnalysisDialog from "~/components/configuration/sales/OrderKitAnalysisDialog.vue";
 import type { OrderKitAnalysisRow as AnalysisRow } from "~~/shared/types/orderKitAnalysis";
 import { MAX_SALES_ORDER_PAYMENT_PLANS } from "~~/shared/types/salesOrderPayment";

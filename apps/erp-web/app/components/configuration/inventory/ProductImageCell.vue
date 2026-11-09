@@ -7,7 +7,7 @@
             :aria-label="`查看产品图片，共 ${images.length} 张`"
             @click.stop="showImagePreview = true"
         >
-            <img :src="images[0].url" :alt="images[0].alt" loading="lazy" />
+            <img :src="resolveErpImageUrl(images[0].url)" :alt="images[0].alt" loading="lazy" />
             <span v-if="images.length > 1" class="image-count">+{{ images.length - 1 }}</span>
         </button>
         <span v-else>--</span>
@@ -22,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import ImagePreviewDialog, { type PreviewImage } from "~/components/configuration/inventory/ImagePreviewDialog.vue";
 
 interface ProductImageItem {

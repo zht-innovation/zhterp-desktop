@@ -37,7 +37,7 @@
                     </div>
                 </div> -->
                 <el-form-item class="btn-wrapper">
-                    <el-button class="btn" @click="onSubmit">登录</el-button>
+                    <el-button class="btn" :loading="isSubmitting" @click="onSubmit">登录</el-button>
                     <!-- <el-button class="btn" @click="onRegister">注册</el-button> -->
                 </el-form-item>
             </el-form>
@@ -51,7 +51,8 @@ import { ref, reactive } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import { Avatar, Key } from "@element-plus/icons-vue"
 import { adminLogin } from "~/composables/api/useAdminApi"
-import { setToken } from "~/utils/auth"
+import { cancelDesktopSessionRestore, persistDesktopSession, setToken } from "~/utils/auth"
+import { isDesktop } from "~/utils/desktop"
 
 definePageMeta({
     layout: 'admin'
@@ -67,6 +68,7 @@ const inputStyle = {
 }
 
 const form = ref();
+const isSubmitting = ref(false)
 const loginForm = reactive({
     user: "",
     password: "",
@@ -88,41 +90,43 @@ const rules = reactive({
     ]
 })
 
-const onSubmit = () => {
-    form.value.validate((valid) => {
-        if (valid) {
-            adminLogin()(loginForm.user, loginForm.password).then((res: any) => {
-                if (res?.code != 200) {
-                    ElMessage({
-                        message: res?.msg,
-                        type: "error",
-                        grouping: true,
-                    })
-                    return
-                }
-
-                setToken(res.data.token)
-                
-                // 用户信息由中间件解析Token存入useState，不再存入localStorage，localStorage容易被篡改
-                // const adminInfo = useLocalStorage('admin_info', {})
-                // adminInfo.value = res.data.user
-
-                const redirect = String(route.query.redirect || '')
-                if (redirect.startsWith('/') && !redirect.startsWith('//')) {
-                    router.push(redirect)
-                    return
-                }
-
-                router.push({ name: 'configuration' })
-            })
-        } else {
-            ElMessage({
-                message: "请输入完整信息",
-                type: "error",
-                grouping: true,
-            })
+const nuxtApp = useNuxtApp()
+const onSubmit = async () => {
+    if (isSubmitting.value) return
+    isSubmitting.value = true
+    try {
+        const valid = await form.value?.validate().catch(() => false)
+        if (!valid) {
+            ElMessage.error("请输入完整信息")
+            return
         }
-    })
+
+        if (isDesktop()) cancelDesktopSessionRestore()
+        const res = await adminLogin()(loginForm.user, loginForm.password)
+        if (res?.code != 200 || !res.data?.token) {
+            ElMessage.error(res?.msg || "登录失败，请重试")
+            return
+        }
+
+        nuxtApp.runWithContext(() => setToken(res.data.token))
+        if (isDesktop() && !(await persistDesktopSession(res.data.token))) {
+            ElMessage.warning("无法保存登录状态，下次启动需重新登录")
+        }
+
+        const redirect = String(route.query.redirect || '')
+        if (redirect.startsWith('/') && !redirect.startsWith('//')) {
+            await router.push(redirect)
+            return
+        }
+        await router.push({ name: 'configuration' })
+    } catch (error) {
+        const failure = error as { statusCode?: number; data?: { msg?: string } }
+        ElMessage.error(failure.data?.msg || (failure.statusCode
+            ? "登录失败，请稍后重试"
+            : "无法连接 ERP 服务，请检查网络后重试"))
+    } finally {
+        isSubmitting.value = false
+    }
 }
 
 </script>

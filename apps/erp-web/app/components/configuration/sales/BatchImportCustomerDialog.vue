@@ -54,6 +54,7 @@
 </template>
 
 <script setup lang="ts">
+import { downloadBlob } from "~/utils/fileActions";
 import FileUploader from '~/components/configuration/sales/FileUploader.vue'
 
 const props = withDefaults(defineProps<{
@@ -90,7 +91,7 @@ const submit = () => {
     emit('submit', files.value[0])
 }
 
-const downloadTemplate = () => {
+const downloadTemplate = async () => {
     const headers = [
         '姓名',
         '城市',
@@ -117,12 +118,11 @@ const downloadTemplate = () => {
 
     const csvContent = [headers.join(','), example.join(',')].join('\n')
     const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = '客户导入模板.csv'
-    link.click()
-    URL.revokeObjectURL(url)
+    try {
+        await downloadBlob(blob, '客户导入模板.csv')
+    } catch {
+        ElMessage.error('保存客户导入模板失败')
+    }
 }
 
 watch(

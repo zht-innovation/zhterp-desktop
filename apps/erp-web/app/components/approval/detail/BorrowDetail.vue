@@ -53,12 +53,13 @@
                         <a
                             v-if="product.image"
                             class="product-image-link"
-                            :href="product.image"
+                            :href="resolveErpImageUrl(product.image)"
                             target="_blank"
-                            rel="noopener"
+                            rel="noopener noreferrer"
                             :title="product.model || '查看大图'"
+                            @click="previewProductImage($event, product.image, product.model)"
                         >
-                            <img :src="product.image" :alt="product.model || '产品图片'">
+                            <img :src="resolveErpImageUrl(product.image)" :alt="product.model || '产品图片'">
                         </a>
                         <Icon v-else name="lucide:image" />
                     </div>
@@ -76,10 +77,14 @@
                 </div>
             </ErpTableFrame>
         </section>
+        <AttachmentImagePreview v-model="showImagePreview" :title="previewTitle" :src="previewUrl" />
     </div>
 </template>
 
 <script setup lang="ts">
+import AttachmentImagePreview from "~/components/configuration/sales/AttachmentImagePreview.vue";
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
+import { isDesktop } from "~/utils/desktop";
 import ErpTableFrame from "~/components/configuration/ErpTableFrame.vue";
 import type { BorrowBusinessDetail } from "~/types/approval";
 import { formatOneDecimalText } from "~/utils/inventoryNumberFormat";
@@ -117,6 +122,20 @@ const products = computed(() => {
 });
 
 const { copyCellText } = useApprovalCellCopy();
+
+const showImagePreview = ref(false);
+const previewTitle = ref("");
+const previewUrl = ref("");
+
+const previewProductImage = (event: MouseEvent, source: string, model?: string) => {
+    if (!isDesktop()) return;
+    event.preventDefault();
+    const url = resolveErpImageUrl(source);
+    if (!url) return;
+    previewTitle.value = model || "产品图片";
+    previewUrl.value = url;
+    showImagePreview.value = true;
+};
 
 const formatDate = (value?: string) => {
     if (!value) return "--";

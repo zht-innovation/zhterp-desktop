@@ -136,7 +136,7 @@
                                         @click="openImagePreview(product.image, product.model)"
                                     >
                                         <img
-                                            :src="product.image"
+                                            :src="resolveErpImageUrl(product.image)"
                                             :alt="product.model"
                                         >
                                     </button>
@@ -200,6 +200,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { normalizeProductPickerItem, type ProductPickerItem } from "~/composables/inventory/useInventoryProductPickerData";
 import ErpBreadcrumb from "~/components/configuration/ErpBreadcrumb.vue";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";

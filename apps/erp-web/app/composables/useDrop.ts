@@ -1,6 +1,8 @@
-import { ref, onMounted, watch } from "vue";
+import { ref, watch } from "vue";
 import { uploadImage } from "./api/useIndicesApi";
 import type { Ref } from "vue";
+import { isDesktop } from "~/utils/desktop";
+import { MAX_DESKTOP_OPEN_BYTES, selectDesktopFiles } from "~/utils/fileActions";
 
 export default function (
     dom: Ref<HTMLElement | undefined>,
@@ -23,39 +25,43 @@ export default function (
             delayRef.value = isDragOver.value;
         }, 16);
     });
+    const uploadFile = async (file?: File) => {
+        if (!file?.size) {
+            ElMessage.warning("请拖入单个文件");
+            return;
+        }
+        const formData = new FormData();
+        formData.append("image", file);
+        loading.value = true;
+        try {
+            const res = await (opt.uploader || uploadImage)(formData);
+            if (res.code == 200) {
+                callback(res.data.path);
+            } else {
+                ElMessage.error("上传文件失败");
+            }
+        } catch {
+            ElMessage.error("上传文件失败");
+        } finally {
+            loading.value = false;
+        }
+    };
+
     const userSelectFile = () => {
         isDragOver.value = false;
+        const accept = opt.accept || "*";
+        if (isDesktop()) {
+            void selectDesktopFiles(accept, false, MAX_DESKTOP_OPEN_BYTES)
+                .then(([file]) => { if (file) return uploadFile(file); })
+                .catch(() => ElMessage.error("无法读取所选文件"));
+            return;
+        }
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = opt.accept || "*";
-        input.onchange = (e: any) => {
-            // 过滤文件夹
-            if (input.files?.[0].size) {
-                const formData = new FormData();
-                formData.append("image", input.files[0]);
-                loading.value = true;
-                const uploader = opt.uploader || uploadImage;
-                uploader(formData)
-                    .then((res: any) => {
-                        if (res.code == 200) {
-                            callback(res.data.path);
-                        } else {
-                            ElMessage.error("上传文件失败");
-                        }
-                    })
-                    .catch(() => {
-                        ElMessage.error("上传文件失败");
-                    })
-                    .finally(() => {
-                        loading.value = false;
-                    });
-            } else {
-                ElMessage.warning("请拖入单个文件");
-            }
-        };
+        input.accept = accept;
+        input.onchange = () => void uploadFile(input.files?.[0]);
         input.click();
     };
-    onMounted(() => {});
 
     watch(dom, () => {
         if (!dom.value) return;
@@ -74,33 +80,11 @@ export default function (
             e.stopPropagation();
             isDragOver.value = false;
         });
-        dom.value.addEventListener("drop", (e: any) => {
+        dom.value.addEventListener("drop", (e: DragEvent) => {
             e.preventDefault();
             e.stopPropagation();
             isDragOver.value = false;
-            // 过滤文件夹
-            if (e.dataTransfer.files[0].size) {
-                const formData = new FormData();
-                formData.append("image", e.dataTransfer.files[0]);
-                loading.value = true;
-                const uploader = opt.uploader || uploadImage;
-                uploader(formData)
-                    .then((res: any) => {
-                        if (res.code == 200) {
-                            callback(res.data.path);
-                        } else {
-                            ElMessage.error("上传文件失败");
-                        }
-                    })
-                    .catch(() => {
-                        ElMessage.error("上传文件失败");
-                    })
-                    .finally(() => {
-                        loading.value = false;
-                    });
-            } else {
-                ElMessage.warning("请拖入单个文件");
-            }
+            void uploadFile(e.dataTransfer?.files[0]);
         });
         if (!noClick) {
             dom.value.addEventListener("click", () => {

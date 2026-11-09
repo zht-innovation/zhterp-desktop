@@ -20,7 +20,7 @@
             >
                 <Icon name="lucide:chevron-left" />
             </button>
-            <img v-if="currentImage" :src="currentImage.url" :alt="currentImage.alt || title" />
+            <img v-if="currentImage" :src="resolveErpImageUrl(currentImage.url)" :alt="currentImage.alt || title" />
             <button
                 v-if="images.length > 1"
                 class="nav-button next"
@@ -37,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 export interface PreviewImage {
     url: string;
     alt?: string;
