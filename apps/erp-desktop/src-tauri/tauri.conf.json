@@ -16,6 +16,9 @@
         "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
         "windows": {
             "allowDowngrades": false,
+            "nsis": {
+                "installerIcon": "icons/icon.ico"
+            },
             "webviewInstallMode": {
                 "type": "downloadBootstrapper"
             }
