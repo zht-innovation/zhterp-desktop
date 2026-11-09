@@ -72,6 +72,7 @@ impl Transport {
             .find_map(|line| line.trim().strip_prefix("location ~ ")?.strip_suffix(" {"))
             .ok_or_else(|| io::Error::other("missing desktop attachment route"))?;
         let client = Client::builder()
+            .user_agent(concat!("ZHT-ERP-Desktop/", env!("CARGO_PKG_VERSION")))
             .https_only(true)
             .redirect(reqwest::redirect::Policy::none())
             .retry(reqwest::retry::never())

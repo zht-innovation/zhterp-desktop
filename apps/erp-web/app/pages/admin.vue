@@ -120,9 +120,13 @@ const onSubmit = async () => {
         }
         await router.push({ name: 'configuration' })
     } catch (error) {
-        const failure = error as { statusCode?: number; data?: { msg?: string } }
+        const failure = error as { statusCode?: number; data?: { msg?: string }; response?: Response }
+        if (failure.response?.headers.get("cf-mitigated") === "challenge") {
+            ElMessage.error("ERP 网关要求浏览器验证，请联系管理员检查预发站访问规则")
+            return
+        }
         ElMessage.error(failure.data?.msg || (failure.statusCode
-            ? "登录失败，请稍后重试"
+            ? `登录失败（HTTP ${failure.statusCode}），请稍后重试`
             : "无法连接 ERP 服务，请检查网络后重试"))
     } finally {
         isSubmitting.value = false
