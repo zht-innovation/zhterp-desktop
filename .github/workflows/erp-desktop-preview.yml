@@ -42,8 +42,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: oven-sh/setup-bun@v2
-
       - name: Prepare Rust targets
         shell: bash
         run: |
@@ -51,14 +49,16 @@ jobs:
           rustup target add --toolchain stable ${{ matrix.rust_targets }}
 
       - name: Install desktop dependencies
-        run: bun install --filter './apps/erp-desktop'
+        working-directory: apps/erp-desktop
+        run: npm install --workspaces=false --no-package-lock --no-audit --no-fund
 
       - name: Build preview installer
         working-directory: apps/erp-desktop
+        shell: bash
         env:
           ERP_DESKTOP_ORIGIN: ${{ inputs.erp_origin }}
           APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
-        run: bun run ${{ matrix.script }} --config src-tauri/tauri.staging.conf.json
+        run: npm run --workspaces=false ${{ matrix.script }} -- --config src-tauri/tauri.staging.conf.json
 
       - name: Write installer checksum
         shell: pwsh
@@ -71,7 +71,7 @@ jobs:
           if ($installers.Count -ne 1) { throw "Expected one installer in $bundle" }
           $installer = $installers[0]
           $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          Set-Content -LiteralPath (Join-Path $bundle 'SHA256SUMS.txt') -Value "$hash  $($installer.Name)" -Encoding ascii
+          Set-Content -LiteralPath (Join-Path $bundle 'SHA256SUMS.txt') -Value "$hash  $($installer.Name)" -Encoding utf8NoBOM
 
       - name: Upload preview installer
         uses: actions/upload-artifact@v7
