@@ -1,0 +1,7 @@
+"~^POST:/admin/login/?$" 1;
+"~^GET:/admin/profile/?$" 1;
+"~^GET:/department/retrieve/?$" 1;
+"~^GET:/inventory/product/retrieve/?$" 1;
+"~^GET:/inventory/stock/retrieve/?$" 1;
+"~^GET:/notification/retrieve/?$" 1;
+"~^GET:/sales-order/retrieve/?$" 1;

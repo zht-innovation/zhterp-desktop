@@ -1,0 +1,169 @@
+.erp-dialog-frame {
+    width: 600px;
+    min-width: 0;
+    max-width: min(1240px, calc(100vw - 32px));
+    min-height: 300px;
+    max-height: min(800px, calc(100vh - 32px));
+    display: grid;
+    grid-template-rows: 52px minmax(0, 1fr) 64px;
+    overflow: hidden;
+    border: 1px solid var(--erp-color-border-muted);
+    border-radius: var(--erp-radius-surface-dialog);
+    background: var(--erp-color-fill-default);
+}
+
+@supports (height: 100dvh) {
+    .erp-dialog-frame {
+        max-height: min(800px, calc(100dvh - 32px));
+    }
+}
+
+.erp-dialog-frame--no-footer {
+    grid-template-rows: 52px minmax(0, 1fr);
+}
+
+.erp-dialog-frame__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--erp-spacing-12);
+    border-bottom: 1px solid var(--erp-color-divider-subtle);
+}
+
+.erp-dialog-frame__title {
+    margin: 0;
+    color: var(--erp-color-text-primary);
+    font-size: var(--erp-typography-title1-font-size);
+    font-weight: var(--erp-typography-title1-font-weight);
+    line-height: var(--erp-typography-title1-line-height);
+}
+
+.erp-dialog-frame__close {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--erp-radius-control-default);
+    color: var(--erp-color-icon-default);
+    background: transparent;
+    cursor: pointer;
+}
+
+.erp-dialog-frame__close svg {
+    width: 16px;
+    height: 16px;
+}
+
+.erp-dialog-frame__close:not(:disabled):hover {
+    background: var(--erp-color-fill-hover);
+}
+
+.erp-dialog-frame__close:disabled {
+    color: var(--erp-color-icon-disabled);
+    cursor: not-allowed;
+}
+
+.erp-dialog-frame__body {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    align-content: safe center;
+    gap: var(--erp-spacing-12);
+    padding: var(--erp-spacing-20);
+    overflow: auto;
+}
+
+.erp-dialog-frame .form-row {
+    width: var(--erp-dialog-form-width);
+    min-height: var(--erp-size-control-height-sm);
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--erp-spacing-12);
+    margin: 0 auto;
+}
+
+.erp-dialog-frame .field-label {
+    color: var(--erp-color-text-primary);
+    font-size: var(--erp-typography-content1-font-size);
+    font-weight: var(--erp-typography-content1-font-weight);
+    line-height: var(--erp-typography-content1-line-height);
+    white-space: nowrap;
+}
+
+.erp-dialog-frame .field-label.required::after {
+    content: "*";
+    color: var(--erp-color-text-required);
+}
+
+.erp-dialog-frame .dialog-input {
+    width: 100%;
+    height: var(--erp-size-control-height-sm);
+    box-sizing: border-box;
+    padding: 0 var(--erp-spacing-8);
+    border: 1px solid var(--erp-color-border-default);
+    border-radius: var(--erp-radius-control-default);
+    outline: 0;
+    color: var(--erp-color-text-primary);
+    background: var(--erp-color-fill-default);
+    font-size: var(--erp-typography-content1-font-size);
+    font-weight: var(--erp-typography-content1-font-weight);
+    line-height: var(--erp-typography-content1-line-height);
+}
+
+.erp-dialog-frame .dialog-input:focus {
+    border-color: var(--erp-color-border-brand);
+}
+
+.erp-dialog-frame .dialog-input.readonly {
+    border-color: var(--erp-color-border-muted);
+    color: var(--erp-color-text-disabled);
+    background: var(--erp-color-fill-disabled);
+    cursor: not-allowed;
+}
+
+.erp-dialog-frame__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--erp-spacing-12);
+    padding: var(--erp-spacing-12);
+    border-top: 1px solid var(--erp-color-divider-subtle);
+}
+
+.erp-dialog-frame .dialog-button {
+    width: 112px;
+    height: var(--erp-size-control-height-md);
+    border-radius: var(--erp-radius-control-default);
+    font-size: var(--erp-typography-title2-font-size);
+    font-weight: var(--erp-typography-title2-font-weight);
+    line-height: var(--erp-typography-title2-line-height);
+    cursor: pointer;
+}
+
+.erp-dialog-frame .dialog-button.cancel {
+    border: 1px solid var(--erp-color-border-default);
+    color: var(--erp-color-text-secondary-strong);
+    background: var(--erp-color-fill-default);
+}
+
+.erp-dialog-frame .dialog-button.confirm {
+    border: 1px solid var(--erp-color-action-primary);
+    color: var(--erp-color-text-white);
+    background: var(--erp-color-action-primary);
+}
+
+.erp-dialog-frame .dialog-button.confirm:not(:disabled):active {
+    border-color: var(--erp-color-action-primary-pressed);
+    background: var(--erp-color-action-primary-pressed);
+}
+
+.erp-dialog-frame .dialog-button:disabled {
+    border-color: var(--erp-color-border-muted);
+    color: var(--erp-color-text-disabled);
+    background: var(--erp-color-fill-disabled);
+    cursor: not-allowed;
+}

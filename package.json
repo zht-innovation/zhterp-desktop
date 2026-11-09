@@ -1,0 +1,13 @@
+{
+    "name": "zhterp-desktop",
+    "private": true,
+    "type": "module",
+    "workspaces": ["apps/*", "packages/*"],
+    "scripts": {
+        "dev:web": "bun run --cwd apps/erp-web dev",
+        "dev:api": "bun run --cwd apps/erp-api dev",
+        "build:web": "bun run --cwd apps/erp-web build",
+        "build:api": "bun run --cwd apps/erp-api build",
+        "gateway:routes": "node deploy/nginx/generate-routes.mjs"
+    }
+}

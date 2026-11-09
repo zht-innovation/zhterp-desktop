@@ -1,0 +1,84 @@
+name: ERP desktop preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      erp_origin:
+        description: HTTPS origin of the isolated ERP staging site
+        required: true
+        type: string
+        default: https://deploy.zhtaero.com
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            runner: windows-2025
+            rust_targets: x86_64-pc-windows-msvc
+            script: build:windows
+            bundle: x86_64-pc-windows-msvc/release/bundle/nsis
+            installer: '*-setup.exe'
+          - platform: macos-universal
+            runner: macos-15
+            rust_targets: aarch64-apple-darwin x86_64-apple-darwin
+            script: build:macos
+            bundle: universal-apple-darwin/release/bundle/dmg
+            installer: '*.dmg'
+    env:
+      RUSTUP_TOOLCHAIN: stable
+      CARGO_TARGET_DIR: ${{ github.workspace }}/apps/erp-desktop/src-tauri/target
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Prepare Rust targets
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup target add --toolchain stable ${{ matrix.rust_targets }}
+
+      - name: Install desktop dependencies
+        run: bun install --filter './apps/erp-desktop'
+
+      - name: Build preview installer
+        working-directory: apps/erp-desktop
+        env:
+          ERP_DESKTOP_ORIGIN: ${{ inputs.erp_origin }}
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
+        run: bun run ${{ matrix.script }} --config src-tauri/tauri.staging.conf.json
+
+      - name: Write installer checksum
+        shell: pwsh
+        env:
+          BUNDLE_PATH: ${{ matrix.bundle }}
+          INSTALLER_PATTERN: ${{ matrix.installer }}
+        run: |
+          $bundle = Join-Path $env:CARGO_TARGET_DIR $env:BUNDLE_PATH
+          $installers = @(Get-ChildItem -LiteralPath $bundle -Filter $env:INSTALLER_PATTERN -File)
+          if ($installers.Count -ne 1) { throw "Expected one installer in $bundle" }
+          $installer = $installers[0]
+          $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath (Join-Path $bundle 'SHA256SUMS.txt') -Value "$hash  $($installer.Name)" -Encoding ascii
+
+      - name: Upload preview installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: erp-preview-${{ matrix.platform }}
+          path: |
+            apps/erp-desktop/src-tauri/target/${{ matrix.bundle }}/${{ matrix.installer }}
+            apps/erp-desktop/src-tauri/target/${{ matrix.bundle }}/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

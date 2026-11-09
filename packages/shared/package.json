@@ -1,0 +1,5 @@
+{
+    "name": "@zhterp/shared",
+    "private": true,
+    "type": "module"
+}

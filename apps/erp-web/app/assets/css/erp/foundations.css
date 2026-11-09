@@ -1,0 +1,81 @@
+.erp-app,
+.erp-app * {
+    font-family: var(--erp-typography-content1-font-family) !important;
+}
+
+.erp-app,
+.erp-selectable {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* 覆盖全局禁选，并让控件的后代继承各自的选择行为。 */
+.erp-app *,
+.erp-selectable * {
+    -webkit-user-select: inherit;
+    -moz-user-select: inherit;
+    -ms-user-select: inherit;
+    user-select: inherit;
+}
+
+:is(.erp-app, .erp-selectable) :where(
+    button,
+    select,
+    input[type="checkbox"],
+    input[type="radio"],
+    [role="button"],
+    [role="checkbox"],
+    [role="switch"],
+    .side-nav,
+    .nose,
+    .btn-diy,
+    .checkbox-control,
+    .drag-handle,
+    .column-resize-handle,
+    .column-config-table
+) {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+:is(.erp-app, .erp-selectable) .erp-selectable-text {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+.erp-app {
+    color: var(--erp-color-text-primary);
+    background: var(--erp-color-bg-page);
+    font-size: var(--erp-typography-content1-font-size);
+    font-weight: var(--erp-typography-content1-font-weight);
+    line-height: var(--erp-typography-content1-line-height);
+}
+
+.erp-app :where(button, input, select, textarea) {
+    font: inherit;
+}
+
+.erp-dialog-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--erp-color-bg-overlay);
+}
+
+.erp-dialog-mask.inventory-responsive-dialog-mask {
+    align-items: center;
+    align-items: safe center;
+    box-sizing: border-box;
+    padding: 16px;
+    padding: var(--erp-spacing-16, 16px);
+    overflow: auto;
+}

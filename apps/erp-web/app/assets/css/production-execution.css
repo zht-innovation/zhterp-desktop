@@ -1,0 +1,124 @@
+.production-execution-page {
+    box-sizing: border-box;
+    height: 100%;
+    min-height: 0;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow: auto;
+    background: #f5f7fa;
+    color: #303133;
+    font: 14px var(--erp-typography-font-family-base);
+}
+.production-execution-page .page-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 42px; }
+.production-execution-page .erp-search-box { width: min(460px, 100%); box-sizing: border-box; }
+.production-execution-page .page-heading h1 { margin: 0; color: #202122; font-size: 24px; line-height: 32px; font-weight: 600; }
+.production-execution-page .page-heading p { margin: 5px 0 0; color: #909399; font-size: 13px; }
+.production-execution-page .status-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.production-execution-page .status-cards.three-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.production-execution-page .status-cards button { min-height: 108px; padding: 17px 20px; text-align: left; border: 1px solid #e3e8ef; border-radius: 7px; background: #fff; cursor: pointer; font: inherit; }
+.production-execution-page .status-cards button.active { border-color: #90c5ff; box-shadow: 0 0 0 2px #409eff16; }
+.production-execution-page .status-cards span, .production-execution-page .status-cards small { display: block; color: #606266; font-size: 13px; }
+.production-execution-page .status-cards strong { display: block; margin: 7px 0 1px; color: #409eff; font-size: 29px; line-height: 34px; font-weight: 500; }
+.production-execution-page .status-cards small { color: #909399; font-size: 11px; }
+.production-execution-page .list-card { min-width: 0; padding: 12px; border: 1px solid #e9edf2; border-radius: 7px; background: #fff; }
+.production-execution-page .list-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+:is(.production-execution-page, .production-execution-dialog) .list-help { color: #909399; font-size: 12px; }
+.production-execution-page .filter-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; border-bottom: 1px solid #e8edf3; }
+.production-execution-page .filter-tabs { display: flex; flex-wrap: wrap; gap: 7px; }
+.production-execution-page .filter-tabs button { display: flex; align-items: center; gap: 5px; min-height: 40px; padding: 0 10px; border: 0; border-bottom: 2px solid transparent; background: none; color: #606266; cursor: pointer; font: inherit; }
+.production-execution-page .filter-tabs button.active { border-color: #409eff; color: #409eff; }
+.production-execution-page .filter-tabs span { color: #909399; font-size: 12px; }
+.production-execution-page .table-row { display: grid; grid-template-columns: var(--erp-table-columns); align-items: center; gap: 14px; padding: 12px 14px; }
+.production-execution-page .table-header { min-height: 44px; box-sizing: border-box; background: #f5f7fa; color: #606266; font-size: 12px; font-weight: 500; }
+.production-execution-page .table-data { min-height: 82px; box-sizing: border-box; border-bottom: 1px solid #edf0f4; font-size: 13px; }
+.production-execution-page .table-data:hover { background: #fafcff; }
+.production-execution-page .erp-table-frame { padding: 0; box-shadow: none; }
+:is(.production-execution-page, .production-execution-dialog) .stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+:is(.production-execution-page, .production-execution-dialog) .stack strong { color: #303133; font-weight: 600; }
+:is(.production-execution-page, .production-execution-dialog) .stack span, :is(.production-execution-page, .production-execution-dialog) .stack small { color: #909399; line-height: 18px; overflow-wrap: anywhere; }
+:is(.production-execution-page, .production-execution-dialog) .stack small { font-size: 12px; }
+:is(.production-execution-page, .production-execution-dialog) .status-pill { display: inline-block; padding: 4px 8px; border-radius: 4px; background: #ecf5ff; color: #409eff; font-size: 12px; line-height: 18px; white-space: nowrap; }
+:is(.production-execution-page, .production-execution-dialog) .status-pill:is(.done, .已完成, .已出库, .已入库) { background: #e9f7ef; color: #2b9b65; }
+:is(.production-execution-page, .production-execution-dialog) .status-pill:is(.pending, .待出库, .待入库, .待退料入库) { background: #fff5e7; color: #b77920; }
+:is(.production-execution-page, .production-execution-dialog) .status-pill:is(.working, .生产中, .部分入库, .部分出库) { background: #e8f4ff; color: #2281d0; }
+:is(.production-execution-page, .production-execution-dialog) .status-pill:is(.muted, .已撤销, .已关闭) { background: #f0f2f5; color: #777d87; }
+:is(.production-execution-page, .production-execution-dialog) .status-pill.danger { background: #fff0f0; color: #d9363e; }
+:is(.production-execution-page, .production-execution-dialog) .primary-button, :is(.production-execution-page, .production-execution-dialog) .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 35px; padding: 7px 14px; border: 1px solid #dcdfe6; border-radius: 5px; background: #fff; color: #606266; font: inherit; cursor: pointer; }
+:is(.production-execution-page, .production-execution-dialog) .primary-button { border-color: #409eff; background: #409eff; color: #fff; }
+:is(.production-execution-page, .production-execution-dialog) .primary-button:not(:disabled):hover { border-color: #2d8de8; background: #2d8de8; }
+:is(.production-execution-page, .production-execution-dialog) .secondary-button:not(:disabled):hover { border-color: #90c5ff; color: #409eff; }
+:is(.production-execution-page, .production-execution-dialog) button:disabled { opacity: .5; cursor: not-allowed; }
+:is(.production-execution-page, .production-execution-dialog) .primary-button svg, :is(.production-execution-page, .production-execution-dialog) .secondary-button svg { width: 15px; height: 15px; }
+:is(.production-execution-page, .production-execution-dialog) .text-button { display: inline-flex; align-items: center; gap: 3px; padding: 4px 0; border: 0; background: none; color: #409eff; font: inherit; cursor: pointer; text-align: left; }
+:is(.production-execution-page, .production-execution-dialog) .text-button svg { width: 13px; height: 13px; }
+:is(.production-execution-page, .production-execution-dialog) .text-button.danger { color: #d9363e; }
+:is(.production-execution-page, .production-execution-dialog) button:focus-visible { outline: 2px solid #409eff; outline-offset: 2px; }
+:is(.production-execution-page, .production-execution-dialog) .detail-summary, :is(.production-execution-page, .production-execution-dialog) .information-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+:is(.production-execution-page, .production-execution-dialog) .detail-summary { padding: 15px; border-radius: 6px; background: #f5f7fa; }
+:is(.production-execution-page, .production-execution-dialog) .detail-summary > div, :is(.production-execution-page, .production-execution-dialog) .information-grid > div { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
+:is(.production-execution-page, .production-execution-dialog) .detail-summary small, :is(.production-execution-page, .production-execution-dialog) .information-grid small { color: #909399; font-size: 12px; }
+:is(.production-execution-page, .production-execution-dialog) .detail-summary strong, :is(.production-execution-page, .production-execution-dialog) .information-grid strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+:is(.production-execution-page, .production-execution-dialog) .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+:is(.production-execution-page, .production-execution-dialog) .field, :is(.production-execution-page, .production-execution-dialog) .form-grid > label { display: flex; flex-direction: column; gap: 7px; min-width: 0; color: #606266; font-size: 13px; }
+:is(.production-execution-page, .production-execution-dialog) .field small, :is(.production-execution-page, .production-execution-dialog) .form-grid small { color: #909399; font-size: 12px; }
+.production-execution-dialog input:not([type="checkbox"]):not([type="radio"]), .production-execution-dialog select, .production-execution-dialog textarea { box-sizing: border-box; min-width: 0; max-width: 100%; min-height: 35px; padding: 7px 10px; border: 1px solid #dcdfe6; border-radius: 5px; background: #fff; color: #303133; font: inherit; }
+.production-execution-dialog input[type="number"] { width: 100px; }
+:is(.production-execution-page, .production-execution-dialog) .field input, :is(.production-execution-page, .production-execution-dialog) .field select, :is(.production-execution-page, .production-execution-dialog) .field textarea, :is(.production-execution-page, .production-execution-dialog) .form-grid > label > input, :is(.production-execution-page, .production-execution-dialog) .form-grid > label > select, :is(.production-execution-page, .production-execution-dialog) .form-grid > label > textarea { width: 100%; }
+.production-execution-dialog textarea { min-height: 76px; resize: vertical; }
+.production-execution-dialog input:focus, .production-execution-dialog select:focus, .production-execution-dialog textarea:focus { border-color: #409eff; outline: 0; }
+.production-execution-dialog input:disabled, .production-execution-dialog select:disabled, .production-execution-dialog textarea:disabled { color: #909399; background: #f5f7fa; cursor: not-allowed; }
+.production-execution-dialog input[type="checkbox"], .production-execution-dialog input[type="radio"] { width: 15px; height: 15px; margin: 0; accent-color: #409eff; flex-shrink: 0; }
+:is(.production-execution-page, .production-execution-dialog) .table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; }
+:is(.production-execution-page, .production-execution-dialog) .detail-table { width: 100%; min-width: 700px; border-collapse: collapse; text-align: left; font-size: 13px; }
+:is(.production-execution-page, .production-execution-dialog) .detail-table th { padding: 11px 12px; background: #f5f7fa; color: #606266; font-size: 12px; font-weight: 500; white-space: nowrap; }
+:is(.production-execution-page, .production-execution-dialog) .detail-table td { padding: 12px; border-bottom: 1px solid #edf0f4; vertical-align: middle; }
+:is(.production-execution-page, .production-execution-dialog) .detail-table td > strong, :is(.production-execution-page, .production-execution-dialog) .detail-table td > small { display: block; }
+:is(.production-execution-page, .production-execution-dialog) .detail-table td > small { margin-top: 4px; color: #909399; font-size: 12px; }
+:is(.production-execution-page, .production-execution-dialog) .detail-table select { min-width: 112px; }
+:is(.production-execution-page, .production-execution-dialog) .detail-note { margin: 0; color: #909399; font-size: 12px; line-height: 21px; white-space: pre-line; }
+:is(.production-execution-page, .production-execution-dialog) .section-title { margin: 0; color: #303133; font-size: 15px; font-weight: 600; }
+:is(.production-execution-page, .production-execution-dialog) .form-error { margin: 0; padding: 10px 12px; border-radius: 5px; background: #fff2f0; color: #d9363e; font-size: 13px; line-height: 20px; }
+:is(.production-execution-page, .production-execution-dialog) .empty-panel { display: grid; place-items: center; align-content: center; gap: 8px; min-height: 140px; color: #909399; text-align: center; font-size: 13px; }
+.production-execution-dialog .detail-table td.empty-panel { display: table-cell; height: 140px; text-align: center; }
+:is(.production-execution-page, .production-execution-dialog) .empty-panel svg { width: 28px; height: 28px; }
+:is(.production-execution-page, .production-execution-dialog) .confirm-line { display: flex; align-items: flex-start; gap: 8px; color: #606266; font-size: 13px; line-height: 20px; }
+:is(.production-execution-page, .production-execution-dialog) .confirm-line input { margin-top: 3px; }
+:is(.production-execution-page, .production-execution-dialog) details { padding: 12px; border: 1px solid #e9edf2; border-radius: 5px; }
+:is(.production-execution-page, .production-execution-dialog) details > summary { color: #606266; cursor: pointer; font-size: 13px; }
+:is(.production-execution-page, .production-execution-dialog) details[open] > summary { margin-bottom: 12px; }
+:is(.production-execution-page, .production-execution-dialog) .notice { margin: 0; padding: 10px 14px; border: 1px solid #b9e7ce; border-radius: 5px; color: #278657; background: #eef9f2; font-size: 13px; line-height: 20px; }
+.production-execution-overlay { position: fixed; inset: 0; z-index: 2200; display: grid; place-items: center; padding: 16px; box-sizing: border-box; background: #0006; color: #303133; font: 14px var(--erp-typography-font-family-base); overscroll-behavior: contain; }
+.production-execution-dialog-shell { max-width: 100%; min-width: 0; outline: 0; }
+.production-execution-dialog { max-width: 100%; max-height: calc(100dvh - 32px); grid-template-rows: 52px minmax(0, 1fr) auto; box-shadow: 0 20px 50px #0003; }
+.production-execution-dialog .erp-dialog-frame__header { padding: 14px 20px; background: #f8fafc; }
+.production-execution-dialog .erp-dialog-frame__title { font-size: 17px; font-weight: 600; }
+.production-execution-dialog .erp-dialog-frame__body { display: flex; flex-direction: column; align-content: normal; align-items: stretch; gap: 18px; padding: 20px; overscroll-behavior: contain; }
+.production-execution-dialog .erp-dialog-frame__body > * { flex-shrink: 0; }
+.production-execution-dialog .erp-dialog-frame__body > form { display: grid; gap: 18px; }
+.production-execution-dialog .erp-dialog-frame__actions { flex-wrap: wrap; padding: 13px 20px; }
+.production-execution-image { position: relative; display: inline-grid; place-items: center; width: 52px; height: 52px; padding: 3px; box-sizing: border-box; overflow: hidden; border: 1px solid #e2e8ef; border-radius: 6px; background: #f8fafc; cursor: zoom-in; flex-shrink: 0; }
+.production-execution-image img { width: 100%; height: 100%; object-fit: contain; }
+.production-execution-image > svg { position: absolute; right: 2px; bottom: 2px; width: 13px; height: 13px; padding: 2px; border-radius: 3px; color: #409eff; background: #fffd; }
+.production-execution-image-placeholder { align-content: center; gap: 3px; cursor: default; color: #a5adb8; }
+.production-execution-image-placeholder > svg { position: static; width: 20px; height: 20px; padding: 0; background: transparent; color: inherit; }
+.production-execution-image-placeholder small { font-size: 9px; }
+@media (max-width: 900px) {
+    .production-execution-page .status-cards { gap: 8px; }
+    .production-execution-page .status-cards button { padding: 14px; }
+    :is(.production-execution-page, .production-execution-dialog) .detail-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 650px) {
+    .production-execution-page .page-topbar { align-items: stretch; flex-direction: column; }
+    .production-execution-page .status-cards, .production-execution-page .status-cards.three-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .production-execution-page .list-actions { align-items: flex-start; }
+    .production-execution-page .filter-row { align-items: stretch; flex-direction: column; }
+    :is(.production-execution-page, .production-execution-dialog) .form-grid, :is(.production-execution-page, .production-execution-dialog) .information-grid { grid-template-columns: 1fr; }
+    .production-execution-overlay { padding: 8px; }
+    .production-execution-dialog { max-height: calc(100dvh - 16px); }
+    .production-execution-dialog .erp-dialog-frame__header, .production-execution-dialog .erp-dialog-frame__body, .production-execution-dialog .erp-dialog-frame__actions { padding: 12px; }
+    .production-execution-dialog .erp-dialog-frame__actions { gap: 7px; }
+    .production-execution-dialog .erp-dialog-frame__actions button { flex: 1 1 auto; }
+    .production-execution-image-preview.image-preview-dialog { min-width: 0; width: calc(100vw - 24px) !important; }
+}

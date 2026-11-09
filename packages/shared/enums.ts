@@ -1,0 +1,102 @@
+export enum KEEL_TAG {
+    KEEL,
+    KEEL_MINI,
+    KEEL_PLUS,
+    KEEL_PRO,
+    KEEL_MAX,
+    ALL
+}
+
+export enum ADMIN_ROLE {
+    SUPER,
+    DEVELOPER,
+    OPERATOR,
+    SELLER,
+    VENDOR,
+    FINANCE,
+    PURCHASER,
+    WAREHOUSE_KEEPER,
+    FINANCE_MANAGER,
+    PRODUCTION_MANAGER,
+    ORDINARY_USER,
+    CONTENT_MANAGER,
+    ELECTRONICS_WAREHOUSE_KEEPER = 12
+}
+
+export const ADMIN_ROLE_NAME: Record<ADMIN_ROLE, string> = {
+    [ADMIN_ROLE.SUPER]: '超级管理员',
+    [ADMIN_ROLE.DEVELOPER]: '开发者',
+    [ADMIN_ROLE.OPERATOR]: '运营',
+    [ADMIN_ROLE.SELLER]: '销售',
+    [ADMIN_ROLE.VENDOR]: '厂商',
+    [ADMIN_ROLE.FINANCE]: '财务',
+    [ADMIN_ROLE.PURCHASER]: '采购',
+    [ADMIN_ROLE.WAREHOUSE_KEEPER]: '库管',
+    [ADMIN_ROLE.FINANCE_MANAGER]: '财务经理',
+    [ADMIN_ROLE.PRODUCTION_MANAGER]: '生产管理',
+    [ADMIN_ROLE.ORDINARY_USER]: '普通用户',
+    [ADMIN_ROLE.CONTENT_MANAGER]: '文章商品用户',
+    [ADMIN_ROLE.ELECTRONICS_WAREHOUSE_KEEPER]: '电子部库管'
+}
+
+export const APPROVAL_APPLICANT_ROLES = [
+    ADMIN_ROLE.SUPER,
+    ADMIN_ROLE.OPERATOR,
+    ADMIN_ROLE.SELLER,
+    ADMIN_ROLE.FINANCE,
+    ADMIN_ROLE.PURCHASER,
+    ADMIN_ROLE.WAREHOUSE_KEEPER,
+    ADMIN_ROLE.FINANCE_MANAGER,
+    ADMIN_ROLE.PRODUCTION_MANAGER,
+    ADMIN_ROLE.ORDINARY_USER,
+] as const;
+
+export const isApprovalApplicantRole = (role: number) =>
+    APPROVAL_APPLICANT_ROLES.includes(role as ADMIN_ROLE);
+
+export enum CUSTOMER_SOURCE {
+    WEB,
+    YOUTUBE,
+    TELEGRAM,
+    BILIBILI,
+    REDNOTE,
+    EXIHIBITION,
+    OTHER
+}
+
+export const CUSTOMER_SOURCE_STR: Record<CUSTOMER_SOURCE, string> = {
+    [CUSTOMER_SOURCE.WEB]: '网站',
+    [CUSTOMER_SOURCE.YOUTUBE]: 'Youtube',
+    [CUSTOMER_SOURCE.TELEGRAM]: 'Telegram',
+    [CUSTOMER_SOURCE.BILIBILI]: 'B站',
+    [CUSTOMER_SOURCE.REDNOTE]: '小红书',
+    [CUSTOMER_SOURCE.EXIHIBITION]: '展会',
+    [CUSTOMER_SOURCE.OTHER]: '其他'
+}
+
+export enum INVENTORY_PRODUCT_SOURCE {
+    PURCHASED = '外采',
+    SELF_ASSEMBLED = '自组装',
+    OUTSOURCED_ASSEMBLED = '外包组装',
+    OTHER = '其他'
+}
+
+export enum INVENTORY_STOCK_WARNING_STATUS {
+    LOW = '过低',
+    HIGH = '过高',
+    NORMAL = '正常'
+}
+
+export enum INVENTORY_ORDER_STATUS {
+    DRAFT = '草稿',
+    PENDING = '待审核',
+    APPROVED = '已审核',
+    COMPLETED = '已完成',
+    REJECTED = '已拒绝',
+    CANCELLED = '已取消'
+}
+
+export enum FINANCE_COST_TYPE {
+    ACCESSORY = '原料资产',
+    MACHINE = '整机组装件',
+}

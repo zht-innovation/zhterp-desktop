@@ -1,0 +1,230 @@
+:root {
+    --erp-table-col-action: 150px;
+    --erp-table-col-date: 180px;
+    --erp-table-col-operator: 150px;
+    --erp-table-col-remark: 180px;
+}
+
+.erp-table-frame {
+    min-width: 0;
+    min-height: 0;
+    padding: var(--erp-spacing-container-padding);
+    overflow: hidden;
+    border-radius: var(--erp-radius-surface-default);
+    background: var(--erp-color-fill-default);
+    box-shadow: var(--erp-shadow-surface);
+}
+
+.erp-table-frame--embedded {
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.erp-table-frame__scroll {
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: 48px minmax(0, 1fr);
+    overflow: hidden;
+}
+
+.erp-table-frame__head {
+    background: var(--erp-color-fill-table-header);
+}
+
+.erp-table-frame__body {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.erp-table-frame--scroll-x .erp-table-frame__body {
+    overflow: visible;
+}
+
+.erp-table-frame--scroll-x .erp-table-frame__scroll {
+    display: block;
+    overflow: auto;
+    will-change: scroll-position;
+}
+
+.erp-table-frame--scroll-x .erp-table-frame__head,
+.erp-table-frame--scroll-x .erp-table-frame__body {
+    width: 100%;
+    min-width: var(--erp-table-min-width);
+}
+
+.erp-table-frame--scroll-x .erp-table-frame__head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.erp-table-fixed-start {
+    border-right: 0;
+    box-shadow: none;
+}
+
+.erp-table-fixed-end {
+    border-left: 0;
+    box-shadow: none;
+}
+
+.erp-table-frame--has-overflow-x .erp-table-fixed-start {
+    border-right: 1px solid var(--erp-color-border-muted);
+    box-shadow: 6px 0 10px rgb(0 0 0 / 6%);
+}
+
+.erp-table-frame--has-overflow-x .erp-table-fixed-end {
+    border-left: 1px solid var(--erp-color-border-muted);
+    box-shadow: -6px 0 10px rgb(0 0 0 / 6%);
+}
+
+.erp-table-frame .table-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: var(--erp-table-columns);
+    align-items: center;
+}
+
+.erp-table-frame.erp-table-frame--scroll-x .table-row {
+    width: 100%;
+    min-width: 0;
+}
+
+.erp-table-frame .table-head {
+    height: 48px;
+    font-size: var(--erp-typography-title2-font-size);
+    font-weight: var(--erp-typography-title2-font-weight);
+    line-height: var(--erp-typography-title2-line-height);
+}
+
+.erp-table-frame .data-row {
+    height: 64px;
+    border-bottom: 1px solid var(--erp-color-divider-default);
+    background: var(--erp-color-fill-default);
+    font-size: var(--erp-typography-content1-font-size);
+    font-weight: var(--erp-typography-content1-font-weight);
+    line-height: var(--erp-typography-content1-line-height);
+    transition: background-color 0.16s ease;
+}
+
+.erp-table-frame .data-row:hover {
+    background: var(--erp-color-fill-hover);
+}
+
+.erp-table-frame .data-row[draggable="true"] {
+    cursor: grab;
+}
+
+.erp-table-frame .dragging-row {
+    opacity: 0.6;
+}
+
+.erp-table-frame .drag-over-row {
+    outline: 2px solid var(--erp-color-border-brand);
+    outline-offset: -2px;
+}
+
+.erp-table-frame .table-cell {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--erp-spacing-20);
+    white-space: nowrap;
+}
+
+.erp-table-frame .checkbox-cell {
+    align-self: stretch;
+    padding: 0;
+}
+
+.erp-table-frame .drag-cell {
+    padding: 0;
+}
+
+.erp-table-frame .drag-handle {
+    width: var(--erp-size-icon-default);
+    height: var(--erp-size-icon-default);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    color: var(--erp-color-icon-secondary);
+    background: transparent;
+    cursor: grab;
+}
+
+.erp-table-frame .drag-handle:active {
+    cursor: grabbing;
+}
+
+.erp-table-frame .checkbox-control {
+    width: 100%;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.erp-table-frame .checkbox-control:has(.row-checkbox:disabled) {
+    cursor: not-allowed;
+}
+
+.erp-table-frame .row-checkbox {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--erp-color-action-primary);
+}
+
+.erp-table-frame .actions-cell {
+    gap: var(--erp-spacing-12);
+}
+
+.erp-table-frame .icon-button {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--erp-radius-control-default);
+    background: transparent;
+    cursor: pointer;
+}
+
+.erp-table-frame .icon-button:not(:disabled):hover {
+    background: var(--erp-color-fill-hover);
+}
+
+.erp-table-frame .icon-button.edit,
+.erp-table-frame .icon-button.blue {
+    color: var(--erp-color-icon-brand);
+}
+
+.erp-table-frame .icon-button.delete {
+    color: var(--erp-color-icon-error);
+}
+
+.erp-table-frame .icon-button:disabled,
+.erp-table-frame .drag-handle:disabled {
+    color: var(--erp-color-icon-disabled);
+}
+
+.erp-table-frame .empty-row {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--erp-color-text-tertiary);
+    background: var(--erp-color-fill-default);
+    font-size: var(--erp-typography-content1-font-size);
+    line-height: var(--erp-typography-content1-line-height);
+}

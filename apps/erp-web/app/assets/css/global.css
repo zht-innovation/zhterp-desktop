@@ -1,0 +1,256 @@
+@font-face {
+    font-family: "AlibabaPuHuiTi";
+    src: url("/font/English-AlibabaPuHuiTi_Regular.woff2");
+    /* WOFF2 格式，仅加载英文字体 */
+    font-display: swap;
+}
+
+* {
+    padding: 0;
+    margin: 0;
+    font-family: "AlibabaPuHuiTi", "PingFang SC";
+    box-sizing: border-box;
+    overflow-anchor: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.configuration-list,
+.configuration-list *,
+.configuration,
+.configuration *,
+.configurationDisplay,
+.configurationDisplay *,
+.feedback,
+.feedback *,
+.simulator,
+.simulator *,
+.dashboard-page,
+.dashboard-page * {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+a {
+    display: inline-block;
+    outline: none;
+    text-decoration: none;
+    color: inherit;
+}
+
+input {
+    outline: none;
+    border: none;
+    user-select: none;
+}
+
+body {
+    /* color: var(--white); */
+    overflow: hidden;
+    background-color: #fafafa;
+
+
+
+    --red: #ff0600;
+    --red1: #ed4b46;
+    --grey: #8c8c8c;
+    --black: #232323;
+    --hover: black;
+    --white: #ffffff;
+    --trans: transparent;
+    --bg-hbuilder: #fffae8;
+}
+
+::-moz-selection {
+    background-color: var(--red);
+    color: var(--white);
+}
+
+::selection {
+    background-color: var(--red);
+    color: var(--white);
+}
+
+.flex {
+    display: flex;
+    align-items: center;
+}
+
+.center {
+    justify-content: center;
+}
+
+.column {
+    flex-direction: column;
+}
+
+.nose {
+    user-select: none;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.nowrap {
+    white-space: nowrap;
+
+}
+
+.textareaWrap {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* 针对 Firefox (Firefox 使用不同的标准) */
+
+/* .scrollBar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scrollBar::-webkit-scrollbar-thumb {
+    background-color: #d1d1d1;
+    border-radius: 3px;
+    cursor: auto;
+}
+
+.scrollBar::-webkit-scrollbar-track {
+    background-color: #f5f5f5;
+    border-radius: 3px;
+    cursor: auto;
+}
+
+.scrollBar::-webkit-scrollbar-thumb:hover {
+    background-color: #a8a8a8;
+}
+
+.scrollBar::-webkit-scrollbar-thumb:active {
+    background-color: #787878;
+} */
+
+
+/* 对移动中的元素应用的过渡 */
+.drag-list-enter-active,
+.drag-list-leave-active {}
+
+.drag-list-move {
+    transition: all .23s ease;
+
+}
+
+.drag-list-enter-from,
+.drag-list-leave-to {
+    opacity: 0;
+}
+
+* {
+    --el-font-size-base: 17px !important;
+}
+
+.el-input--large {
+    font-size: 17px !important;
+}
+
+.overflow-hidden {
+    overflow: hidden;
+}
+
+.icon-tuozhuai {
+    cursor: grab !important;
+}
+
+.iconfont {
+    font-size: inherit;
+}
+
+.hoverAuto {
+    transition: .2s;
+}
+
+.hoverAuto:hover {
+    filter: brightness(.96);
+    cursor: pointer;
+}
+
+.btn-diy {
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 18px;
+    transition: .2s;
+    cursor: pointer;
+    user-select: none;
+    width: max-content;
+    color: #4cceac;
+    background-color: #e1f9f3;
+}
+
+.btn-diy:hover {
+    filter: brightness(.96);
+}
+
+.btn-diy:active {
+    filter: brightness(.92);
+}
+
+.global-icon-button-tooltip {
+    --tooltip-arrow-left: 50%;
+
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    max-width: 160px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    color: #ffffff;
+    background: rgb(31 41 55 / 94%);
+    box-shadow: 0 8px 20px rgb(15 23 42 / 18%);
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.global-icon-button-tooltip.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.global-icon-button-tooltip::after {
+    content: "";
+    position: absolute;
+    left: var(--tooltip-arrow-left);
+    bottom: -5px;
+    width: 0;
+    height: 0;
+    border-top: 5px solid rgb(31 41 55 / 94%);
+    border-right: 5px solid transparent;
+    border-left: 5px solid transparent;
+    transform: translateX(-50%);
+}

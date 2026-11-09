@@ -1,0 +1,9 @@
+[
+    "POST /admin/login",
+    "GET /admin/profile",
+    "GET /department/retrieve",
+    "GET /inventory/stock/retrieve",
+    "GET /inventory/product/retrieve",
+    "GET /sales-order/retrieve",
+    "GET /notification/retrieve"
+]

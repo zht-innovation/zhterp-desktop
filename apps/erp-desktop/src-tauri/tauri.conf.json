@@ -1,0 +1,27 @@
+{
+    "$schema": "https://schema.tauri.app/config/2",
+    "productName": "ZH ERP",
+    "version": "0.1.0",
+    "identifier": "com.zhtaero.erp",
+    "app": {
+        "windows": [],
+        "withGlobalTauri": false,
+        "security": {
+            "capabilities": []
+        }
+    },
+    "bundle": {
+        "active": true,
+        "targets": ["nsis", "dmg"],
+        "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"],
+        "windows": {
+            "allowDowngrades": false,
+            "webviewInstallMode": {
+                "type": "downloadBootstrapper"
+            }
+        },
+        "macOS": {
+            "minimumSystemVersion": "13.0"
+        }
+    }
+}

@@ -1,0 +1,92 @@
+.el-overlay.erp-message-box-overlay {
+    --el-overlay-color-lighter: var(--erp-color-bg-overlay);
+
+    background-color: var(--erp-color-bg-overlay);
+}
+
+.erp-message-box-overlay.fade-in-linear-enter-active,
+.erp-message-box-overlay.fade-in-linear-leave-active {
+    transition: none;
+}
+
+.erp-message-box-overlay.fade-in-linear-enter-active .el-overlay-message-box,
+.erp-message-box-overlay.fade-in-linear-leave-active .el-overlay-message-box {
+    animation: none;
+}
+
+.erp-message-box {
+    width: 600px;
+    min-width: 600px;
+    max-width: 1240px;
+    min-height: 300px;
+    max-height: 800px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--erp-color-border-muted);
+    border-radius: var(--erp-radius-surface-dialog);
+    background: var(--erp-color-fill-default);
+    box-shadow: none;
+}
+
+.erp-message-box .el-message-box__header {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    padding: var(--erp-spacing-12);
+    border-bottom: 1px solid var(--erp-color-divider-subtle);
+}
+
+.erp-message-box .el-message-box__title {
+    color: var(--erp-color-text-primary);
+    font-size: var(--erp-typography-title1-font-size);
+    font-weight: var(--erp-typography-title1-font-weight);
+    line-height: var(--erp-typography-title1-line-height);
+}
+
+.erp-message-box .el-message-box__content {
+    min-height: 184px;
+    padding: var(--erp-spacing-20);
+    color: var(--erp-color-text-primary);
+    font-size: var(--erp-typography-content1-font-size);
+    line-height: var(--erp-typography-content1-line-height);
+}
+
+.erp-message-box .el-message-box__status.el-message-box-icon--warning {
+    color: var(--erp-color-icon-error);
+}
+
+.erp-message-box .el-message-box__btns {
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--erp-spacing-12);
+    padding: var(--erp-spacing-12);
+    border-top: 1px solid var(--erp-color-divider-subtle);
+}
+
+.erp-message-box .el-button {
+    width: 112px;
+    height: var(--erp-size-control-height-md);
+    margin: 0;
+    border-radius: var(--erp-radius-control-default);
+    font-size: var(--erp-typography-title2-font-size);
+    font-weight: var(--erp-typography-title2-font-weight);
+}
+
+.erp-message-box .el-button:not(.el-button--primary) {
+    border-color: var(--erp-color-border-default);
+    color: var(--erp-color-text-secondary-strong);
+    background: var(--erp-color-fill-default);
+}
+
+.erp-message-box .el-button--primary {
+    border-color: var(--erp-color-action-primary);
+    color: var(--erp-color-text-white);
+    background: var(--erp-color-action-primary);
+}
+
+.erp-message-box .el-button--primary:active {
+    border-color: var(--erp-color-action-primary-pressed);
+    background: var(--erp-color-action-primary-pressed);
+}

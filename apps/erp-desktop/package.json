@@ -1,0 +1,13 @@
+{
+    "name": "@zhterp/desktop",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "tauri dev",
+        "build:windows": "tauri build --target x86_64-pc-windows-msvc --bundles nsis",
+        "build:macos": "tauri build --target universal-apple-darwin --bundles dmg"
+    },
+    "devDependencies": {
+        "@tauri-apps/cli": "^2.0.0"
+    }
+}
