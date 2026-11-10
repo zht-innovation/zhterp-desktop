@@ -91,6 +91,11 @@ impl Transport {
         self.notification_get("/notification/unread-summary", token).await
     }
 
+    pub(crate) async fn approval_unread_summary(&self, token: &str) -> Result<(u16, Vec<u8>), String> {
+        self.notification_get("/approval-center/retrieve?view=pending&page=1&pageSize=1", token)
+            .await
+    }
+
     pub(crate) async fn notification_profile(&self, token: &str) -> Result<(u16, Vec<u8>), String> {
         self.notification_get("/admin/profile", token).await
     }

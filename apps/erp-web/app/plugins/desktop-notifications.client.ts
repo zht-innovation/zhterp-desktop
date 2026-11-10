@@ -8,7 +8,7 @@ import { canAccessConfigurationPath, getHomeWorkbenchCapabilities } from "~~/sha
 
 type NotificationEvent = { revision: number } & (
     | { status: "ready"; summary: NotificationUnreadSummary; startedAt: number }
-    | { status: "expired" | "forbidden" | "profile-changed" }
+    | { status: "expired" | "forbidden" | "profile-changed" | "notification-forbidden" }
 );
 
 export default defineNuxtPlugin(async (nuxtApp) => {
@@ -25,31 +25,44 @@ export default defineNuxtPlugin(async (nuxtApp) => {
         const user = adminInfo.value;
         const role = Number(user.role ?? Number.NaN);
         if (!token.value || token.value !== profileToken.value || !profileSyncedAt.value || !user.username) return null;
-        if (!getHomeWorkbenchCapabilities(role).notification || !canAccessConfigurationPath(role, "/configuration/notification")) return null;
-        return { token: token.value, role, username: user.username };
+        const capabilities = getHomeWorkbenchCapabilities(role);
+        const sources = {
+            notification: capabilities.notification && canAccessConfigurationPath(role, "/configuration/notification"),
+            approval: capabilities.approval && canAccessConfigurationPath(role, "/configuration/approval"),
+        };
+        if (!sources.notification && !sources.approval) return null;
+        return { token: token.value, role, username: user.username, sources };
     });
 
     let revision = 0;
-    let currentToken: string | null = null;
-    let currentRole: number | null = null;
+    let currentSession: typeof eligibleSession.value = null;
     let suspended = false;
+
+    const matchesCurrentSession = (session: typeof eligibleSession.value) =>
+        session?.token === currentSession?.token
+        && session?.role === currentSession?.role
+        && session?.username === currentSession?.username
+        && session?.sources.notification === currentSession?.sources.notification
+        && session?.sources.approval === currentSession?.sources.approval;
 
     const syncSession = () => {
         const session = eligibleSession.value;
-        const nextToken = session?.token ?? null;
-        const nextRole = session?.role ?? null;
-        if (revision && !suspended && nextToken === currentToken && nextRole === currentRole) return;
+        if (revision && !suspended && matchesCurrentSession(session)) return;
 
         suspended = false;
-        currentToken = nextToken;
-        currentRole = nextRole;
+        currentSession = session;
         nativePolling.value = false;
         setAccountContext("");
-        if (session) setAccountContext(session.username);
+        if (session?.sources.notification) setAccountContext(session.username);
 
         revision = Math.max(Date.now(), revision + 1);
         const sentRevision = revision;
-        void invoke("sync_desktop_notifications", { token: nextToken, role: nextRole, revision: sentRevision })
+        void invoke("sync_desktop_notifications", {
+            token: session?.token ?? null,
+            role: session?.role ?? null,
+            sources: session?.sources ?? { notification: false, approval: false },
+            revision: sentRevision,
+        })
             .catch((error) => {
                 if (sentRevision === revision) suspended = true;
                 console.error("同步桌面通知会话失败", error);
@@ -58,10 +71,16 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
     const handleNotificationEvent = async (payload: NotificationEvent) => {
         const session = eligibleSession.value;
-        if (suspended || payload.revision !== revision || !session || session.token !== currentToken || session.role !== currentRole) return;
-        if (payload.status === "ready") {
+        if (suspended || payload.revision !== revision || !session || !matchesCurrentSession(session)) return;
+        if (payload.status === "ready" || payload.status === "notification-forbidden") {
+            if (!session.sources.notification) return;
             nativePolling.value = true;
-            applyDesktopSummary(payload.summary, payload.startedAt);
+            if (payload.status === "ready") {
+                setAccountContext(session.username);
+                applyDesktopSummary(payload.summary, payload.startedAt);
+            } else {
+                setAccountContext("");
+            }
             return;
         }
 
