@@ -52,6 +52,12 @@ fn now_seconds() -> Option<u64> {
         .map(|now| now.as_secs())
 }
 
+pub(crate) fn token_is_current(token: &str) -> bool {
+    token_expiry(token)
+        .zip(now_seconds())
+        .is_some_and(|(expiry, now)| expiry > now)
+}
+
 fn restorable_token(saved: &str) -> Option<String> {
     let session = serde_json::from_str::<SavedSession>(saved).ok()?;
     let now = now_seconds()?;

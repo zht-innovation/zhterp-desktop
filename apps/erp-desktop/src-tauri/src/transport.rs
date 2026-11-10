@@ -87,6 +87,31 @@ impl Transport {
         })
     }
 
+    pub(crate) async fn notification_unread_summary(&self, token: &str) -> Result<(u16, Vec<u8>), String> {
+        self.notification_get("/notification/unread-summary", token).await
+    }
+
+    pub(crate) async fn notification_profile(&self, token: &str) -> Result<(u16, Vec<u8>), String> {
+        self.notification_get("/admin/profile", token).await
+    }
+
+    async fn notification_get(&self, path: &str, token: &str) -> Result<(u16, Vec<u8>), String> {
+        let request = DesktopRequest {
+            method: "GET".into(),
+            path: path.into(),
+            headers: BTreeMap::from([("Token".into(), token.into())]),
+            body: None,
+            timeout_ms: Some(5_000),
+        };
+        let response = self.send(request, false).await?;
+        let body = if response.status == 200 {
+            decode_payload(&response.body)?
+        } else {
+            Vec::new()
+        };
+        Ok((response.status, body))
+    }
+
     fn allows_erp_request(&self, method: &Method, path: &str) -> bool {
         self.api_routes.is_match(&format!("{method}:{path}"))
             || ((*method == Method::GET || *method == Method::HEAD)

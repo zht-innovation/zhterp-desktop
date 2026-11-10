@@ -27,6 +27,8 @@ fn main() {
         "restore_desktop_session",
         "save_desktop_session",
         "clear_desktop_session",
+        "sync_desktop_notifications",
+        "refresh_desktop_notifications",
         "open_local_files",
         "save_local_file",
     ]);

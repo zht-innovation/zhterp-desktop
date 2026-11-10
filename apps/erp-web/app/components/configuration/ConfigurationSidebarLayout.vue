@@ -200,6 +200,7 @@ const props = withDefaults(defineProps<{
 const router = useRouter();
 const routePath = computed(() => router.currentRoute.value.path);
 const adminInfo = useState<any>("admin_info", () => ({}));
+const desktopNotificationPolling = useState<boolean>("erp-desktop-notification-polling", () => false);
 const isSidebarExpanded = useState<boolean>("erp_sidebar_expanded", () => true);
 const sidebarAvatarSrc = defaultAvatar;
 const expandedSectionIds = ref([...props.defaultExpandedSectionIds]);
@@ -428,10 +429,10 @@ const toggleSidebar = () => {
     isSidebarExpanded.value = !isSidebarExpanded.value;
 };
 
-const refreshModuleBadges = () => {
+const refreshModuleBadges = (includeNotification = true) => {
     setNotificationAccountContext(username.value);
     setApprovalAccountContext(username.value);
-    if (canShowModule("notification")) {
+    if (includeNotification && canShowModule("notification")) {
         void refreshUnreadSummary();
     }
     if (canShowModule("approval")) {
@@ -450,7 +451,7 @@ let badgeRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
     refreshModuleBadges();
-    badgeRefreshTimer = setInterval(refreshModuleBadges, 60_000);
+    badgeRefreshTimer = setInterval(() => refreshModuleBadges(!desktopNotificationPolling.value), 60_000);
     window.addEventListener("focus", handleWindowFocus);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 });

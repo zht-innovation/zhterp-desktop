@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import {
     checkAllNotifications,
     checkNotification,
@@ -21,6 +22,9 @@ export const useNotificationUnread = () => {
     const accountUsername = useState<string>("notification-unread-account", () => "");
     const requestSequence = useState<number>("notification-unread-request-sequence", () => 0);
     const activeRequests = useState<number>("notification-unread-active-requests", () => 0);
+    const desktop = useRuntimeConfig().public.erpDesktop === true;
+    const desktopToken = useState<string | null>("erp-desktop-token", () => null);
+    const lastForegroundRefresh = useState<number>("notification-unread-foreground-refresh", () => 0);
 
     const setAccountContext = (username: string) => {
         const normalizedUsername = username.trim();
@@ -39,6 +43,7 @@ export const useNotificationUnread = () => {
         requestSequence.value = requestId;
         activeRequests.value += 1;
         refreshing.value = true;
+        if (desktop) lastForegroundRefresh.value = Date.now();
         try {
             const response = await getNotificationUnreadSummary();
             if (
@@ -55,6 +60,7 @@ export const useNotificationUnread = () => {
                 totalUnread: Number(response.data.totalUnread || 0),
             };
             lastSyncedAt.value = Date.now();
+            if (desktop) lastForegroundRefresh.value = lastSyncedAt.value;
             return true;
         } catch (error) {
             console.error("刷新通知未读数量失败", error);
@@ -65,11 +71,27 @@ export const useNotificationUnread = () => {
         }
     };
 
+    const applyDesktopSummary = (next: NotificationUnreadSummary, startedAt: number) => {
+        if (!desktop || !accountUsername.value || refreshing.value || startedAt <= lastForegroundRefresh.value) return;
+        summary.value = next;
+        lastSyncedAt.value = Date.now();
+    };
+
+    const refreshDesktopBadge = () => {
+        if (!desktop) return;
+        lastForegroundRefresh.value = Date.now();
+        void invoke("refresh_desktop_notifications")
+            .catch((error) => console.error("刷新桌面通知角标失败", error));
+    };
+
     const markReadAndRefresh = async (
         id: string,
         type: "announcement" | "notification",
     ) => {
+        const token = desktopToken.value;
         await checkNotification(id);
+        if (desktop && token !== desktopToken.value) return;
+        refreshDesktopBadge();
         const announcementUnread = type === "announcement"
             ? Math.max(0, summary.value.announcementUnread - 1)
             : summary.value.announcementUnread;
@@ -85,7 +107,10 @@ export const useNotificationUnread = () => {
     };
 
     const markAllReadAndRefresh = async (type: "announcement" | "notification") => {
+        const token = desktopToken.value;
         await checkAllNotifications(type);
+        if (desktop && token !== desktopToken.value) return;
+        refreshDesktopBadge();
         const announcementUnread = type === "announcement"
             ? 0
             : summary.value.announcementUnread;
@@ -101,6 +126,7 @@ export const useNotificationUnread = () => {
     };
 
     return {
+        applyDesktopSummary,
         lastSyncedAt,
         markAllReadAndRefresh,
         markReadAndRefresh,

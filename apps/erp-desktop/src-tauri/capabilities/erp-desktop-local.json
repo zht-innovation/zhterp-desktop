@@ -12,6 +12,10 @@
         "allow-restore-desktop-session",
         "allow-save-desktop-session",
         "allow-clear-desktop-session",
+        "allow-sync-desktop-notifications",
+        "allow-refresh-desktop-notifications",
+        "core:event:allow-listen",
+        "core:event:allow-unlisten",
         "allow-open-local-files",
         "allow-save-local-file"
     ]

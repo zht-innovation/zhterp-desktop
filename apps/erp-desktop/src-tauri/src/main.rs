@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod desktop_lifecycle;
+mod desktop_notifications;
 mod local_files;
 mod session;
 mod transport;
@@ -9,7 +11,7 @@ use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::webview::{DownloadEvent, NewWindowResponse};
 use tauri::{Manager, Url, WebviewUrl, WebviewWindowBuilder};
 
-const MAIN_WINDOW: &str = "erp";
+pub(crate) const MAIN_WINDOW: &str = "erp";
 const BACK_MENU: &str = "erp-history-back";
 
 fn is_https(url: &Url) -> bool {
@@ -39,8 +41,23 @@ fn open_external(url: &Url) {
 }
 
 fn main() {
-    tauri::Builder::default()
+    let start_hidden = std::env::args_os()
+        .skip(1)
+        .any(|arg| arg == desktop_lifecycle::AUTOSTART_ARG);
+    let context = tauri::generate_context!();
+    let autostart = tauri_plugin_autostart::Builder::new()
+        .app_name(context.config().identifier.clone())
+        .arg(desktop_lifecycle::AUTOSTART_ARG)
+        .build();
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if !args.iter().skip(1).any(|arg| arg == desktop_lifecycle::AUTOSTART_ARG) {
+                desktop_lifecycle::show_main(app);
+            }
+        }))
+        .plugin(autostart)
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             transport::desktop_info,
             transport::erp_request,
@@ -48,6 +65,8 @@ fn main() {
             session::restore_desktop_session,
             session::save_desktop_session,
             session::clear_desktop_session,
+            desktop_notifications::sync_desktop_notifications,
+            desktop_notifications::refresh_desktop_notifications,
             local_files::open_local_files,
             local_files::save_local_file,
         ])
@@ -55,6 +74,7 @@ fn main() {
             let menu = Menu::default(app)?;
             let back = MenuItem::with_id(app, BACK_MENU, "返回上一页", true, None::<&str>)?;
             menu.append(&Submenu::with_items(app, "导航", true, &[&back])?)?;
+            desktop_lifecycle::append_app_menu(app, &menu)?;
             Ok(menu)
         })
         .on_menu_event(|app, event| {
@@ -62,10 +82,13 @@ fn main() {
                 if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
                     let _ = window.eval("history.back()");
                 }
+            } else {
+                desktop_lifecycle::handle_menu(app, event.id().as_ref());
             }
         })
-        .setup(|app| {
+        .setup(move |app| {
             app.manage(transport::Transport::new()?);
+            desktop_notifications::start(app.handle());
             let app_handle = app.handle().clone();
             let image_sources = format!("{} {}", transport::IMAGE_ORIGIN, transport::ERP_ORIGIN);
 
@@ -73,6 +96,7 @@ fn main() {
                 .title(app.config().product_name.as_deref().unwrap_or("ZH ERP"))
                 .inner_size(1360.0, 860.0)
                 .min_inner_size(900.0, 600.0)
+                .visible(!start_hidden)
                 .devtools(false)
                 .use_https_scheme(true)
                 .on_web_resource_request(move |_, response| {
@@ -114,8 +138,15 @@ fn main() {
             let window = window.disable_drag_drop_handler();
 
             window.build()?;
-            Ok(())
+            desktop_lifecycle::setup(app, start_hidden)
         })
-        .run(tauri::generate_context!())
+        .build(context)
         .expect("failed to start ZH ERP desktop");
+
+    app.run(|_app, _event| {
+        #[cfg(target_os = "macos")]
+        if matches!(_event, tauri::RunEvent::Reopen { .. }) {
+            desktop_lifecycle::show_main(_app);
+        }
+    });
 }
