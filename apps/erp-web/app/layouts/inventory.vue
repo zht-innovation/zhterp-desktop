@@ -118,6 +118,7 @@ const sidebarSections = computed(() => {
             basicDataChildren.push({
                 id: "basic-data.unit",
                 label: "单位管理",
+                icon: "lucide:ruler",
                 path: "/configuration/inventory/basic-data/unit",
             });
         }
@@ -126,6 +127,7 @@ const sidebarSections = computed(() => {
             basicDataChildren.push({
                 id: "basic-data.material",
                 label: "材质管理",
+                icon: "lucide:layers-3",
                 path: "/configuration/inventory/basic-data/material",
             });
         }
@@ -134,6 +136,7 @@ const sidebarSections = computed(() => {
             basicDataChildren.push({
                 id: "basic-data.classification",
                 label: "分类管理",
+                icon: "lucide:tag",
                 path: "/configuration/inventory/basic-data/classification",
             });
         }
@@ -142,6 +145,7 @@ const sidebarSections = computed(() => {
             basicDataChildren.push({
                 id: "basic-data.warehouse",
                 label: "仓库管理",
+                icon: "lucide:warehouse",
                 path: "/configuration/inventory/basic-data/warehouse",
             });
         }

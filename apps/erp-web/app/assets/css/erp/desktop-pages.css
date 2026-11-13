@@ -1,0 +1,33 @@
+/* 桌面公共顶栏已显示导航路径，页面内的搜索和业务操作继续保留。 */
+.erp-app--desktop .configuration-section-content :is(.topbar, .page-header, .page-topbar, .review-topbar) > .erp-breadcrumb,
+.erp-app--desktop .configuration-section-content > .bom-category-page > .topbar > .breadcrumb {
+    display: none;
+}
+
+.erp-app--desktop .configuration-section-content :is(.topbar, .page-header, .page-topbar, .review-topbar) > .erp-search-box,
+.erp-app--desktop .configuration-section-content > .bom-category-page > .topbar > .search-box {
+    max-width: 100%;
+    margin-left: auto;
+}
+
+/* 这两个页面的旧顶栏只有面包屑。其他页面的顶栏还承载搜索，不能一起隐藏。 */
+.erp-app--desktop .configuration-section-content > :is(.purchase-order-page, .purchase-request-page) > .topbar {
+    display: none;
+}
+
+.erp-app--desktop .configuration-section-content > .purchase-order-page {
+    grid-template-rows: 84px 32px minmax(0, 1fr) 52px;
+}
+
+/* 销售页原来占满视口，现改为占满扣除公共顶栏后的内容区。 */
+.erp-app--desktop .configuration-section-content > :is(
+    .dashboard-page,
+    .news-root,
+    .bulletin-page,
+    .logs-root,
+    .sales-root,
+    .customer-root
+) {
+    height: 100%;
+    min-height: 0;
+}

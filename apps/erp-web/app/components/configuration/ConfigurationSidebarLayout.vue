@@ -4,7 +4,7 @@
             'configuration-section-layout',
             'erp-app',
             layoutClass,
-            { 'sidebar-collapsed': !isSidebarExpanded },
+            { 'sidebar-collapsed': !isSidebarExpanded, 'erp-app--desktop': desktop },
         ]"
     >
         <aside class="side-nav">
@@ -12,10 +12,11 @@
                 <nav class="module-rail" aria-label="ERP 板块导航">
                     <div class="brand">
                         <img :src="sidebarAvatarSrc" alt="ZHT Aero" class="brand-logo">
+                        <span v-if="desktop" class="brand-name">中航通</span>
                     </div>
 
                     <NuxtLink
-                        v-for="module in navigationModules"
+                        v-for="module in railModules"
                         :key="module.id"
                         :to="module.path"
                         class="module-link"
@@ -76,6 +77,7 @@
                                 "
                                 @click="onSectionClick(section)"
                             >
+                                <Icon v-if="desktop" :name="section.icon" class="section-icon" />
                                 <span>{{ section.label }}</span>
                                 <span
                                     v-if="section.badge"
@@ -105,6 +107,7 @@
                                         type="button"
                                         @click="selectNav(item)"
                                     >
+                                        <Icon v-if="desktop && item.icon" :name="item.icon" class="section-icon" />
                                         <span>{{ item.label }}</span>
                                         <span
                                             v-if="item.badge"
@@ -121,13 +124,59 @@
             <NuxtLink
                 class="back-link"
                 to="/configuration"
-                external
-                :title="isSidebarExpanded ? undefined : '返回配置界面'"
+                :external="!desktop"
+                :title="desktop ? '系统设置（返回配置界面）' : isSidebarExpanded ? undefined : '返回配置界面'"
             >
-                <Icon name="lucide:log-out" class="back-icon" />
-                <span v-if="isSidebarExpanded">返回配置界面</span>
+                <Icon :name="desktop ? 'lucide:sliders-horizontal' : 'lucide:log-out'" class="back-icon" />
+                <span v-if="desktop || isSidebarExpanded">{{ desktop ? '系统设置' : '返回配置界面' }}</span>
             </NuxtLink>
         </aside>
+
+        <header v-if="desktop" class="desktop-topbar">
+            <div class="desktop-topbar-left">
+                <button
+                    class="desktop-sidebar-toggle"
+                    type="button"
+                    :aria-label="isSidebarExpanded ? '收起板块菜单' : '展开板块菜单'"
+                    :aria-expanded="isSidebarExpanded"
+                    @click="toggleSidebar"
+                >
+                    <Icon name="lucide:menu" />
+                </button>
+                <ErpBreadcrumb icon="lucide:folder" :items="desktopBreadcrumbItems" />
+            </div>
+            <div class="desktop-topbar-right">
+                <NuxtLink
+                    v-if="notificationModule"
+                    :to="notificationModule.path"
+                    class="desktop-notification-link"
+                    :class="{ active: activeModuleId === 'notification' }"
+                    :aria-label="getModuleBadgeLabel(notificationModule)"
+                >
+                    <Icon name="lucide:bell" />
+                    <span>消息</span>
+                    <span v-if="hasModuleBadge(notificationModule.badge)" class="desktop-unread-count">
+                        {{ typeof notificationModule.badge === 'number' ? formatModuleBadge(notificationModule.badge) : '' }}
+                    </span>
+                </NuxtLink>
+                <details class="desktop-user-menu">
+                    <summary aria-label="用户菜单">
+                        <span class="desktop-user-avatar">{{ displayName.slice(0, 1) }}</span>
+                        <span class="desktop-user-info">
+                            <strong>{{ displayName }}</strong>
+                            <span>{{ displayRoleName }}</span>
+                        </span>
+                        <Icon name="lucide:chevron-down" class="desktop-user-chevron" />
+                    </summary>
+                    <div class="desktop-user-actions">
+                        <button type="button" @click="logout">
+                            <Icon name="lucide:log-out" />
+                            退出登录
+                        </button>
+                    </div>
+                </details>
+            </div>
+        </header>
 
         <section
             :class="[
@@ -144,9 +193,11 @@
 <script setup lang="ts">
 import defaultAvatar from "~/assets/avatar.jpg";
 import ErpSidebarToggleIcon from "~/components/configuration/ErpSidebarToggleIcon.vue";
+import ErpBreadcrumb from "~/components/configuration/ErpBreadcrumb.vue";
+import logout from "~/utils/logout";
 import { useApproval } from "~/composables/useApproval";
 import { useNotificationUnread } from "~/composables/useNotificationUnread";
-import { ADMIN_ROLE } from "~~/shared/enums";
+import { ADMIN_ROLE, ADMIN_ROLE_NAME } from "~~/shared/enums";
 import {
     canAccessAdminFeature,
     canAccessConfigurationPath,
@@ -164,6 +215,7 @@ interface SidebarItem {
     label: string;
     path?: string;
     badge?: boolean;
+    icon?: string;
 }
 
 interface SidebarSection extends SidebarItem {
@@ -198,6 +250,9 @@ const props = withDefaults(defineProps<{
 });
 
 const router = useRouter();
+const desktop = useRuntimeConfig().public.erpDesktop === true;
+// The class is owned by this layout and removed by useHead when leaving the ERP shell.
+useHead({ htmlAttrs: { class: desktop ? 'erp-desktop-shell' : undefined } });
 const routePath = computed(() => router.currentRoute.value.path);
 const adminInfo = useState<any>("admin_info", () => ({}));
 const desktopNotificationPolling = useState<boolean>("erp-desktop-notification-polling", () => false);
@@ -218,6 +273,8 @@ const {
 
 const role = computed(() => Number(adminInfo.value?.role));
 const username = computed(() => String(adminInfo.value?.username || ""));
+const displayName = computed(() => String(adminInfo.value?.nickname || username.value || "未知用户"));
+const displayRoleName = computed(() => ADMIN_ROLE_NAME[role.value] || "未知角色");
 setNotificationAccountContext(username.value);
 setApprovalAccountContext(username.value);
 const isSalesperson = computed(() => role.value === ADMIN_ROLE.SELLER);
@@ -405,6 +462,13 @@ const navigationModules = computed(() =>
         })),
 );
 
+// Reuse the already-authorized navigation result; only the desktop entry position changes.
+const notificationModule = computed(() => navigationModules.value.find((module) => module.id === "notification"));
+const railModules = computed(() => desktop
+    ? navigationModules.value.filter((module) => module.id !== "notification")
+    : navigationModules.value,
+);
+
 const hasModuleBadge = (badge?: boolean | number) =>
     typeof badge === "number" ? badge > 0 : badge === true;
 
@@ -524,6 +588,23 @@ const selectedNavId = computed(() =>
     findSidebarSelection(routePath.value)?.item.id ?? props.defaultSelectedId,
 );
 
+const desktopPageTitles: Record<string, string> = {
+    "/configuration/sales/order/receipt": "回款单表",
+    "/configuration/approval/order": "订单审批",
+    "/configuration/approval/receipt": "回款审批",
+    "/configuration/approval/borrow": "借用审核",
+    "/configuration/inventory/basic-data/bom-category": "BOM类别",
+    "/configuration/sales/dashboard/news": "最新消息",
+};
+const desktopBreadcrumbItems = computed(() => {
+    const moduleTitle = activeModuleId.value === "inventory" ? "仓储管理" : currentModule.value.title;
+    const pageTitle = desktopPageTitles[routePath.value]
+        || findSidebarSelection(routePath.value)?.item.label;
+    return pageTitle && pageTitle !== moduleTitle
+        ? [{ label: moduleTitle }, { label: pageTitle }]
+        : [{ label: moduleTitle }];
+});
+
 const selectNav = (item: SidebarItem) => {
     if (item.path && routePath.value !== item.path) {
         navigateTo(item.path);
@@ -536,7 +617,7 @@ const onSectionClick = (section: SidebarSection) => {
         return;
     }
 
-    expandedSectionIds.value = [];
+    if (!desktop) expandedSectionIds.value = [];
     selectNav(section);
 };
 
@@ -958,3 +1039,6 @@ button {
     }
 }
 </style>
+
+<style src="~/assets/css/erp/desktop-shell.css"></style>
+<style src="~/assets/css/erp/desktop-pages.css"></style>

@@ -1,7 +1,7 @@
 <template>
-    <footer class="inventory-pagination">
+    <footer class="inventory-pagination" :class="{ 'inventory-pagination--compact': compact }">
         <div class="pagination-inner">
-            <span class="total">共{{ total }}条</span>
+            <span class="total">共{{ total }}条<span v-if="compact"> · 已选择 {{ selectedCount }} 项</span></span>
 
             <div class="pager-controls">
                 <label class="page-size-wrap">
@@ -30,24 +30,28 @@
                         :disabled="currentPage <= 1"
                         @click="emit('page-change', currentPage - 1)"
                     >
-                        <Icon name="lucide:chevron-left" class="page-arrow-icon" />
+                        <span v-if="compact">上一页</span>
+                        <Icon v-else name="lucide:chevron-left" class="page-arrow-icon" />
                     </button>
-                    <template v-for="(page, index) in boundedPageNumbers" :key="page">
-                        <span
-                            v-if="index > 0 && page - boundedPageNumbers[index - 1] > 1"
-                            class="page-ellipsis"
-                            aria-hidden="true"
-                        >
-                            ...
-                        </span>
-                        <button
-                            class="page-number"
-                            :class="{ active: page === currentPage }"
-                            type="button"
-                            @click="emit('page-change', page)"
-                        >
-                            {{ page }}
-                        </button>
+                    <span v-if="compact" class="compact-page-status" aria-live="polite">{{ currentPage }} / {{ totalPages }}</span>
+                    <template v-else>
+                        <template v-for="(page, index) in boundedPageNumbers" :key="page">
+                            <span
+                                v-if="index > 0 && page - boundedPageNumbers[index - 1] > 1"
+                                class="page-ellipsis"
+                                aria-hidden="true"
+                            >
+                                ...
+                            </span>
+                            <button
+                                class="page-number"
+                                :class="{ active: page === currentPage }"
+                                type="button"
+                                @click="emit('page-change', page)"
+                            >
+                                {{ page }}
+                            </button>
+                        </template>
                     </template>
                     <button
                         class="page-arrow"
@@ -56,11 +60,12 @@
                         :disabled="currentPage >= totalPages"
                         @click="emit('page-change', currentPage + 1)"
                     >
-                        <Icon name="lucide:chevron-right" class="page-arrow-icon" />
+                        <span v-if="compact">下一页</span>
+                        <Icon v-else name="lucide:chevron-right" class="page-arrow-icon" />
                     </button>
                 </div>
 
-                <div class="jump">
+                <div v-if="!compact" class="jump">
                     <span>跳转到</span>
                     <input
                         :value="jumpPageInput"
@@ -88,6 +93,8 @@ const props = withDefaults(defineProps<{
     totalPages?: number;
     currentPage?: number;
     jumpPageInput?: string;
+    compact?: boolean;
+    selectedCount?: number;
 }>(), {
     total: 0,
     pageSize: 10,
@@ -96,6 +103,8 @@ const props = withDefaults(defineProps<{
     totalPages: 1,
     currentPage: 1,
     jumpPageInput: "",
+    compact: false,
+    selectedCount: 0,
 });
 
 const boundedPageNumbers = computed(() => {
@@ -253,5 +262,63 @@ const emit = defineEmits<{
 .jump input:focus {
     border-color: var(--erp-color-border-brand);
     outline: 0;
+}
+
+.inventory-pagination--compact .pagination-inner {
+    height: 44px;
+    padding: 0;
+    gap: 12px;
+    border-radius: 0;
+}
+
+.inventory-pagination--compact .total,
+.inventory-pagination--compact .compact-page-status {
+    color: #7a8eab;
+    font-size: 12px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.inventory-pagination--compact .pager-controls {
+    gap: 10px;
+}
+
+.inventory-pagination--compact .page-size,
+.inventory-pagination--compact .page-arrow {
+    height: 34px;
+    border: 1px solid #c5cedb;
+    border-radius: 5px;
+    color: #16345a;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.inventory-pagination--compact .page-size {
+    min-width: 100px;
+}
+
+.inventory-pagination--compact .page-arrow {
+    padding: 0 12px;
+    white-space: nowrap;
+}
+
+.inventory-pagination--compact .page-arrow:disabled {
+    color: #a3afbf;
+    border-color: #e1e6ee;
+}
+
+.inventory-pagination--compact .page-arrow:not(:disabled):hover {
+    color: #2788ee;
+    border-color: #2788ee;
+}
+
+@media (max-width: 760px) {
+    .inventory-pagination--compact .pagination-inner {
+        height: auto;
+        min-height: 44px;
+        flex-wrap: wrap;
+    }
 }
 </style>

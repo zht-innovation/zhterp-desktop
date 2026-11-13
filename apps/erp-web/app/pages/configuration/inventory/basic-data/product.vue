@@ -1,6 +1,6 @@
 <template>
-    <div class="product-page">
-        <header class="topbar">
+    <div class="product-page" :class="{ 'product-page--desktop': desktop }">
+        <header v-if="!desktop" class="topbar">
             <ErpBreadcrumb
                 icon="lucide:warehouse"
                 :items="productBreadcrumbItems"
@@ -13,7 +13,7 @@
             />
         </header>
 
-        <div class="filter-row">
+        <div v-show="!desktop || showDesktopFilters" id="product-filters" class="filter-row">
             <div class="filter-field">
                 <span>分类</span>
                 <div
@@ -126,7 +126,48 @@
         </div>
 
         <div class="toolbar">
-            <div class="toolbar-left">
+            <div v-if="desktop" class="toolbar-left desktop-toolbar-left">
+                <button
+                    class="primary-button"
+                    type="button"
+                    :disabled="isLoading || isSubmitting"
+                    @click="openProductDialog"
+                >
+                    <Icon name="lucide:plus" class="button-icon" />
+                    <span>新建产品</span>
+                </button>
+                <button class="outline-button" type="button" :disabled="isSubmitting" @click="openDesktopProductDrafts">
+                    草稿箱
+                </button>
+                <button
+                    class="outline-button"
+                    type="button"
+                    :disabled="isSubmitting || selectedProductIds.length === 0"
+                    @click="batchDeleteProducts"
+                >
+                    批量删除
+                </button>
+                <button class="outline-button" type="button" :disabled="isExporting" @click="exportProducts">
+                    {{ isExporting ? "导出中" : "导出CSV" }}
+                </button>
+                <details ref="desktopMoreMenu" class="desktop-more-menu" @keydown.esc="closeDesktopMoreMenu">
+                    <summary>更多<Icon name="lucide:chevron-down" /></summary>
+                    <div class="desktop-more-actions">
+                        <button type="button" @click="handleDesktopMoreAction('view')">
+                            {{ desktopCompactView ? "切换详细视图" : "切换合并视图" }}
+                        </button>
+                        <button type="button" :disabled="isImporting" @click="handleDesktopMoreAction('import')">
+                            {{ isImporting ? "导入中" : "导入产品" }}
+                        </button>
+                        <button type="button" :disabled="isSubmitting" @click="handleDesktopMoreAction('resize')">
+                            {{ isColumnResizeMode ? "完成调整列宽" : "调整列宽" }}
+                        </button>
+                        <button type="button" :disabled="isSubmitting" @click="handleDesktopMoreAction('reset')">重置列宽</button>
+                        <button type="button" :disabled="isSubmitting" @click="handleDesktopMoreAction('columns')">配置列</button>
+                    </div>
+                </details>
+            </div>
+            <div v-else class="toolbar-left">
                 <button
                     class="primary-button"
                     type="button"
@@ -165,7 +206,28 @@
                 </button>
             </div>
 
-            <div class="toolbar-right">
+            <div v-if="desktop" class="toolbar-right desktop-toolbar-right">
+                <form class="desktop-product-search" @submit.prevent="loadProducts()">
+                    <input
+                        v-model="searchText"
+                        type="search"
+                        aria-label="搜索产品"
+                        placeholder="搜索产品编号或型号"
+                        :disabled="isLoading"
+                    >
+                </form>
+                <button
+                    class="outline-button"
+                    :class="{ 'desktop-filter-active': showDesktopFilters || appliedCategoryId || appliedWarehouseId || appliedSource }"
+                    type="button"
+                    aria-controls="product-filters"
+                    :aria-expanded="showDesktopFilters"
+                    @click="showDesktopFilters = !showDesktopFilters"
+                >
+                    筛选
+                </button>
+            </div>
+            <div v-else class="toolbar-right">
                 <button
                     class="text-button"
                     :class="{ active: isColumnResizeMode }"
@@ -198,6 +260,102 @@
         </div>
 
         <ErpTableFrame
+            v-if="desktop && desktopCompactView"
+            class="desktop-product-table"
+            data-inventory-copy-table
+            columns="36px minmax(160px, 1.15fr) minmax(100px, .8fr) 80px minmax(130px, 1fr) 100px 100px 120px minmax(130px, 1fr) minmax(220px, 1.6fr) 120px"
+            minimum-width="1296px"
+            :loading="isLoading"
+            :empty="showProductEmptyState"
+            loading-text="正在加载产品数据..."
+            empty-text="暂无匹配产品"
+            scroll-x
+        >
+            <template #header>
+                <div class="table-row table-head">
+                    <div class="selection-head checkbox-cell">
+                        <label class="checkbox-control">
+                            <input
+                                class="row-checkbox"
+                                type="checkbox"
+                                :checked="allRowsSelected"
+                                :disabled="isLoading || isSubmitting || visibleProducts.length === 0"
+                                aria-label="选择全部产品"
+                                @change="toggleSelectAll"
+                            >
+                        </label>
+                    </div>
+                    <div class="table-cell">产品编号 / 型号</div>
+                    <div class="table-cell">分类</div>
+                    <div class="table-cell">图片</div>
+                    <div class="table-cell">单位 / 材质</div>
+                    <div class="table-cell">来源</div>
+                    <div class="table-cell">BOM结构</div>
+                    <div class="table-cell">库存上限 / 下限</div>
+                    <div class="table-cell">默认仓库 / 仓位</div>
+                    <div class="table-cell">简介 / 修改时间</div>
+                    <div class="action-head erp-table-fixed-end">操作</div>
+                </div>
+            </template>
+            <div v-for="product in visibleProducts" :key="product.id" class="table-row data-row">
+                <div class="selection-row checkbox-cell">
+                    <label class="checkbox-control">
+                        <input
+                            v-model="selectedProductIds"
+                            class="row-checkbox"
+                            type="checkbox"
+                            :value="product.id"
+                            :disabled="isSubmitting"
+                            :aria-label="`选择${product.id}`"
+                        >
+                    </label>
+                </div>
+                <div class="table-cell desktop-stacked-cell">
+                    <button class="desktop-text-action" type="button" :disabled="isSubmitting" @click="openProductDetail(product)">
+                        {{ product.id || "--" }}
+                    </button>
+                    <span class="desktop-secondary-text" :title="product.model">{{ product.model || "--" }}</span>
+                </div>
+                <div class="table-cell"><span :title="product.category">{{ product.category || "--" }}</span></div>
+                <div class="table-cell">
+                    <button
+                        v-if="product.image"
+                        class="desktop-image-button"
+                        type="button"
+                        :aria-label="`查看${product.model || product.id}的图片`"
+                        @click.stop="openImagePreview(product.image, product.model || product.id)"
+                    >
+                        <img :src="resolveErpImageUrl(product.image)" :alt="product.model || product.id">
+                    </button>
+                    <span v-else class="desktop-image-placeholder" aria-label="暂无图片"><Icon name="lucide:image" class="desktop-image-icon" /></span>
+                </div>
+                <div class="table-cell desktop-stacked-cell">
+                    <span>{{ product.unit || "--" }}</span>
+                    <span class="desktop-secondary-text" :title="product.material">{{ product.material || "--" }}</span>
+                </div>
+                <div class="table-cell"><span>{{ product.source || "--" }}</span></div>
+                <div class="table-cell">
+                    <button class="desktop-text-action" type="button" @click="openBomDialog(product)">查看结构</button>
+                </div>
+                <div class="table-cell"><span>{{ product.stockUpper || "0" }} / {{ product.stockLower || "0" }}</span></div>
+                <div class="table-cell desktop-stacked-cell">
+                    <span :title="product.warehouseName">{{ product.warehouseName || "--" }}</span>
+                    <span class="desktop-secondary-text" :title="product.locationName">{{ product.locationName || "--" }}</span>
+                </div>
+                <div class="table-cell desktop-stacked-cell">
+                    <span :title="product.description">{{ product.description || "--" }}</span>
+                    <span class="desktop-secondary-text">{{ product.updatedAt || "--" }}</span>
+                </div>
+                <div class="action-row actions-cell erp-table-fixed-end">
+                    <button class="desktop-text-action" type="button" :disabled="isSubmitting" @click="openProductDetail(product)">查看</button>
+                    <button class="desktop-text-action" type="button" :disabled="isSubmitting" @click="openEditProductDialog(product)">编辑</button>
+                    <button class="desktop-text-action" type="button" :disabled="isSubmitting" @click="deleteProduct(product)">删除</button>
+                </div>
+            </div>
+        </ErpTableFrame>
+
+        <ErpTableFrame
+            v-else
             data-inventory-copy-table
             :columns="productTableColumnTemplate"
             :minimum-width="productTableMinimumWidth"
@@ -390,6 +548,8 @@
         <InventoryPagination
             v-model:page-size="pageSize"
             v-model:jump-page-input="jumpPageInput"
+            :compact="desktop"
+            :selected-count="selectedProductIds.length"
             :total="totalProducts"
             :page-size-options="pageSizeOptions"
             :page-numbers="pageNumbers"
@@ -865,6 +1025,11 @@ definePageMeta({
     layout: "inventory",
 });
 
+const desktop = useRuntimeConfig().public.erpDesktop === true;
+const desktopCompactView = ref(true);
+const showDesktopFilters = ref(false);
+const desktopMoreMenu = ref<HTMLDetailsElement | null>(null);
+
 const productBreadcrumbItems = [
     { label: "仓储管理" },
     { label: "基础数据" },
@@ -904,6 +1069,8 @@ interface ProductItem {
     stockUpper: string;
     stockLower: string;
     defaultWarehouse: string;
+    warehouseName: string;
+    locationName: string;
     warehouseId: string;
     locationId: string;
     barcode: string;
@@ -1772,6 +1939,8 @@ const normalizeProduct = (product: InventoryProduct): ProductItem => ({
     defaultWarehouse: product.locationName
         ? `${product.warehouseName || "--"}/${product.locationName}`
         : product.warehouseName || "默认仓库",
+    warehouseName: product.warehouseName || "默认仓库",
+    locationName: product.locationName || "",
     warehouseId: toEntityId(product.warehouseId),
     locationId: toEntityId(product.locationId),
     barcode: product.barcode || "",
@@ -2130,6 +2299,11 @@ const openProductDialog = () => {
     resetProductForm();
     void loadProductDrafts();
     showProductDialog.value = true;
+};
+
+const openDesktopProductDrafts = async () => {
+    openProductDialog();
+    await openProductDrafts();
 };
 
 const openEditProductDialog = (product: ProductItem) => {
@@ -3025,8 +3199,44 @@ const dropColumn = (targetColumnKey: ProductColumn["key"]) => {
     draggingColumnKey.value = null;
 };
 
+const closeDesktopMoreMenu = () => {
+    if (desktopMoreMenu.value) {
+        desktopMoreMenu.value.open = false;
+    }
+};
+
+const handleDesktopMoreOutsideClick = (event: MouseEvent) => {
+    if (event.target instanceof Node && !desktopMoreMenu.value?.contains(event.target)) {
+        closeDesktopMoreMenu();
+    }
+};
+
+const handleDesktopMoreAction = (action: "view" | "import" | "resize" | "reset" | "columns") => {
+    closeDesktopMoreMenu();
+
+    if (action === "view") {
+        stopColumnResize();
+        desktopCompactView.value = !desktopCompactView.value;
+        isColumnResizeMode.value = false;
+    } else if (action === "import") {
+        openImportDialog();
+    } else {
+        desktopCompactView.value = false;
+        if (action === "resize") {
+            toggleColumnResizeMode();
+        } else if (action === "reset") {
+            resetColumnWidths();
+        } else {
+            openColumnConfigDialog();
+        }
+    }
+};
+
 onMounted(() => {
     document.addEventListener("click", handleCategoryOutsideClick);
+    if (desktop) {
+        document.addEventListener("click", handleDesktopMoreOutsideClick);
+    }
     applyStoredColumnWidths();
     applyStoredColumnConfigs();
     loadProductOptions();
@@ -3036,6 +3246,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
     invalidateProductImageValidation();
     document.removeEventListener("click", handleCategoryOutsideClick);
+    document.removeEventListener("click", handleDesktopMoreOutsideClick);
     document.removeEventListener("mousemove", resizeColumn);
     document.removeEventListener("mouseup", stopColumnResize);
 });
@@ -4022,6 +4233,297 @@ input:disabled {
     min-height: 0;
     overflow: hidden;
     padding: var(--erp-spacing-20);
+}
+
+.product-page--desktop {
+    --erp-color-action-primary: #2788ee;
+    --erp-color-action-primary-pressed: #1876d8;
+    --erp-color-fill-table-header: #f3f6fb;
+    --erp-color-divider-default: #e8eef7;
+    --erp-color-text-primary: #16345a;
+    --erp-color-text-brand: #2788ee;
+    --erp-color-icon-brand: #2788ee;
+    --erp-color-border-brand: #2788ee;
+    --product-selection-width: 36px;
+
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #dfe8f4;
+    border-radius: 9px;
+    background: #fff;
+    font-size: 12px;
+    box-shadow: 0 2px 4px rgb(38 69 107 / 2%);
+}
+
+.product-page--desktop > .toolbar {
+    order: 1;
+    min-height: 64px;
+    flex: 0 0 auto;
+    gap: 16px;
+    padding: 12px 0;
+    flex-wrap: wrap;
+}
+
+.product-page--desktop > .filter-row {
+    order: 2;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    padding: 12px;
+    border: 1px solid #e4ebf5;
+    background: #f7f9fc;
+}
+
+.product-page--desktop > .erp-table-frame {
+    order: 3;
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.product-page--desktop > :deep(.inventory-pagination) {
+    order: 4;
+    flex: 0 0 auto;
+}
+
+.product-page--desktop .desktop-toolbar-left,
+.product-page--desktop .desktop-toolbar-right {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.product-page--desktop .desktop-toolbar-right {
+    margin-left: auto;
+    gap: 6px;
+}
+
+.product-page--desktop .toolbar .primary-button,
+.product-page--desktop .toolbar .outline-button,
+.desktop-more-menu summary {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.product-page--desktop .toolbar .primary-button {
+    font-weight: 600;
+}
+
+.product-page--desktop .toolbar .button-icon {
+    width: 15px;
+    height: 15px;
+}
+
+.product-page--desktop .toolbar .outline-button {
+    color: #16345a;
+    border-color: #c5cedb;
+}
+
+.product-page--desktop .toolbar .outline-button:disabled {
+    color: #a3afbf;
+    border-color: #e1e6ee;
+    background: #fff;
+}
+
+.product-page--desktop .toolbar .desktop-filter-active {
+    color: #2788ee;
+    border-color: #2788ee;
+    background: #f2f7ff;
+}
+
+.desktop-product-search input {
+    width: 230px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid #c5cedb;
+    border-radius: 5px;
+    outline: 0;
+    background: #fff;
+    color: #16345a;
+    font-size: 13px;
+}
+
+.desktop-product-search input::placeholder {
+    color: #7a8eab;
+}
+
+.desktop-product-search input:focus {
+    border-color: #2788ee;
+}
+
+.desktop-more-menu {
+    position: relative;
+    z-index: 30;
+}
+
+.desktop-more-menu summary {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #c5cedb;
+    color: #16345a;
+    list-style: none;
+    cursor: pointer;
+}
+
+.desktop-more-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.desktop-more-menu summary :deep(svg) {
+    width: 14px;
+    height: 14px;
+}
+
+.desktop-more-actions {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 152px;
+    padding: 5px;
+    border: 1px solid #dfe8f4;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 5px 16px rgb(38 69 107 / 12%);
+}
+
+.desktop-more-actions button {
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: #16345a;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.desktop-more-actions button:not(:disabled):hover {
+    background: #edf5ff;
+    color: #2788ee;
+}
+
+.desktop-more-actions button:disabled {
+    color: #a3afbf;
+}
+
+.desktop-product-table .table-row {
+    padding-right: 0;
+}
+
+.product-page--desktop > .erp-table-frame .table-head {
+    height: 44px;
+    color: #5e7da3;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.product-page--desktop > .erp-table-frame .data-row,
+.product-page--desktop > .erp-table-frame .selection-row,
+.product-page--desktop > .erp-table-frame .action-row {
+    height: 76px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.desktop-product-table .table-cell {
+    justify-content: flex-start;
+    padding: 0 10px;
+}
+
+.desktop-product-table .table-cell > span,
+.desktop-product-table .table-cell > button {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.desktop-product-table .desktop-stacked-cell {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 5px;
+}
+
+.desktop-secondary-text {
+    color: #7a8eab;
+}
+
+.desktop-product-table .action-head {
+    color: #5e7da3;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.desktop-product-table .actions-cell {
+    gap: 8px;
+}
+
+.desktop-product-table .row-checkbox {
+    width: 14px;
+    height: 14px;
+}
+
+.desktop-text-action {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #2788ee;
+    line-height: 20px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.desktop-text-action:disabled {
+    color: #a3afbf;
+}
+
+.desktop-text-action:not(:disabled):hover {
+    color: #1876d8;
+    text-decoration: underline;
+}
+
+.desktop-image-button,
+.desktop-image-placeholder {
+    width: 44px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid #e0eafa;
+    border-radius: 4px;
+    background: #f5f8fd;
+    color: #9bb4ce;
+}
+
+.desktop-image-button {
+    cursor: zoom-in;
+}
+
+.desktop-image-button img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.desktop-image-icon {
+    width: 19px;
+    height: 19px;
 }
 
 @media (max-width: 1200px) {
