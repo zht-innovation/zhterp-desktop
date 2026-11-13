@@ -99,6 +99,7 @@
 </template>
 
 <script setup lang="ts">
+import { getToken } from "~/utils/auth";
 import StatCard from "~/components/configuration/sales/dashboard/StatCard.vue";
 import TrendLineChart from "~/components/configuration/sales/dashboard/TrendLineChart.vue";
 import TopCustomersChart from "~/components/configuration/sales/dashboard/TopCustomersChart.vue";
@@ -142,7 +143,9 @@ const orderPipeline = reactive({
 // ── 加载数据 ──
 const loadData = async () => {
     try {
-        const res = await $fetch<{ code: number; data?: any }>("/dashboard/stats");
+        const res = await $fetch<{ code: number; data?: any }>("/dashboard/stats", {
+            headers: { Token: getToken() || "" },
+        });
         if (res.code === 200 && res.data) {
             const d = res.data;
 

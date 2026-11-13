@@ -117,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import { getToken } from "~/utils/auth";
 import { canAccessSalesModule } from "~~/shared/utils/adminPermission";
 import StatCard from "~/components/configuration/sales/dashboard/StatCard.vue";
 import TrendLineChart from "~/components/configuration/sales/dashboard/TrendLineChart.vue";
@@ -176,7 +177,9 @@ const loadData = async () => {
     dashboardState.value = "loading";
     errorMessage.value = "无法获取看板数据，请稍后重试。";
     try {
-        const res = await $fetch<{ code: number; data?: any }>("/dashboard/stats");
+        const res = await $fetch<{ code: number; data?: any }>("/dashboard/stats", {
+            headers: { Token: getToken() || "" },
+        });
         if (res.code !== 200 || !res.data) {
             throw new Error("看板接口返回异常");
         }
