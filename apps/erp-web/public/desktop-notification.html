@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP 消息提醒</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; margin: 0; }
+        body {
+            color: #1f2937;
+            background: #ffffff;
+            font: 14px/1.5 "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+        a { color: inherit; text-decoration: none; }
+        a:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+        .card {
+            height: 100%;
+            padding: 14px 18px;
+            border: 1px solid #dce4ef;
+            border-top: 3px solid #2563eb;
+            display: flex;
+            flex-direction: column;
+        }
+        .header { display: flex; align-items: center; gap: 9px; min-height: 26px; }
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            color: #ffffff;
+            background: #2563eb;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        #app-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .close {
+            display: grid;
+            place-items: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 5px;
+            color: #64748b;
+            font-size: 22px;
+            line-height: 1;
+        }
+        .close:hover { background: #f1f5f9; color: #1f2937; }
+        .message-link { display: block; margin-top: 9px; }
+        h1 { margin: 0 0 4px; font-size: 16px; line-height: 22px; }
+        #message { margin: 0; color: #475569; font-size: 13px; line-height: 20px; }
+        .footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+        .hint { color: #94a3b8; font-size: 11px; }
+        .open {
+            padding: 5px 13px;
+            border-radius: 6px;
+            color: #ffffff;
+            background: #2563eb;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .open:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <section class="card" aria-labelledby="notification-title">
+        <div class="header">
+            <span class="brand-mark" aria-hidden="true">ZH</span>
+            <span id="app-name">ZH ERP</span>
+            <a class="close" href="/desktop-notification/dismiss" aria-label="关闭提醒">×</a>
+        </div>
+        <a class="message-link" href="/desktop-notification/open">
+            <h1 id="notification-title">消息提醒</h1>
+            <p id="message">你有新的未读消息，请打开 ERP 查看。</p>
+        </a>
+        <div class="footer">
+            <span class="hint">10 秒后自动收起</span>
+            <a class="open" href="/desktop-notification/open">打开 ERP</a>
+        </div>
+    </section>
+</body>
+</html>
