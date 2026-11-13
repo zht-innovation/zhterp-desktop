@@ -279,6 +279,27 @@ fn notification_message(
     }
 }
 
+fn show_notification(app: &AppHandle, message: &str) {
+    #[cfg(target_os = "windows")]
+    match crate::desktop_notification_popup::show(app, message) {
+        Ok(()) => return,
+        Err(error) => {
+            crate::desktop_notification_popup::hide(app);
+            eprintln!("Failed to show ERP desktop popup, falling back to system notification: {error}");
+        }
+    }
+
+    if let Err(error) = app
+        .notification()
+        .builder()
+        .title(app.config().product_name.as_deref().unwrap_or("ZH ERP"))
+        .body(message)
+        .show()
+    {
+        eprintln!("Failed to show ERP system notification: {error}");
+    }
+}
+
 fn publish(
     app: &AppHandle,
     revision: u64,
@@ -306,6 +327,12 @@ fn publish(
             };
             match result {
                 Ok(updates) => {
+                    #[cfg(target_os = "windows")]
+                    if matches!(&updates.approval, SourceUpdate::Forbidden)
+                        || matches!(&updates.notification, SourceUpdate::Forbidden)
+                    {
+                        crate::desktop_notification_popup::hide(&handle);
+                    }
                     let approval_increased = updates
                         .approval
                         .update_count(&mut current.counts.approval, ApprovalSummary::total);
@@ -321,6 +348,8 @@ fn publish(
                     (current.counts, update, message)
                 }
                 Err(status) => {
+                    #[cfg(target_os = "windows")]
+                    crate::desktop_notification_popup::hide(&handle);
                     current.session = None;
                     current.counts = SourceCounts::default();
                     (current.counts, Some((status, None)), None)
@@ -330,12 +359,7 @@ fn publish(
 
         update_badge(&handle, counts);
         if let Some(message) = message {
-            let _ = handle
-                .notification()
-                .builder()
-                .title(handle.config().product_name.as_deref().unwrap_or("ZH ERP"))
-                .body(message)
-                .show();
+            show_notification(&handle, message);
         }
 
         if let Some((status, summary)) = update {
@@ -412,6 +436,8 @@ pub(crate) fn sync_desktop_notifications(
             current.counts = SourceCounts::default();
         }
 
+        #[cfg(target_os = "windows")]
+        crate::desktop_notification_popup::hide(&handle);
         update_badge(&handle, SourceCounts::default());
         notifications.wake.notify_one();
     })

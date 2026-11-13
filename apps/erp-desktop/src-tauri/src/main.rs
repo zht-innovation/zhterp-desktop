@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod desktop_lifecycle;
+#[cfg(target_os = "windows")]
+mod desktop_notification_popup;
 mod desktop_notifications;
 mod local_files;
 mod session;
@@ -138,6 +140,10 @@ fn main() {
             let window = window.disable_drag_drop_handler();
 
             window.build()?;
+            #[cfg(target_os = "windows")]
+            if let Err(error) = desktop_notification_popup::setup(app.handle()) {
+                eprintln!("Failed to prepare ERP desktop notification window: {error}");
+            }
             desktop_lifecycle::setup(app, start_hidden)
         })
         .build(context)
