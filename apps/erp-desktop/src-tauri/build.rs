@@ -22,6 +22,9 @@ fn main() {
 
     let manifest = tauri_build::AppManifest::new().commands(&[
         "desktop_info",
+        "desktop_about_ready",
+        "check_desktop_update",
+        "install_desktop_update",
         "erp_request",
         "upload_product_image",
         "restore_desktop_session",

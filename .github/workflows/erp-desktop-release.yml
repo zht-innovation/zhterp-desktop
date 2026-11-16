@@ -1,0 +1,213 @@
+name: ERP desktop preview release
+
+on:
+  push:
+    tags:
+      - 'desktop-preview-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      commit: ${{ steps.tag.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate preview release tag
+        id: tag
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REPOSITORY" != zht-innovation/zhterp-desktop ]]; then
+            echo 'Preview releases must be built in zht-innovation/zhterp-desktop.' >&2
+            exit 1
+          fi
+          if [[ ! "$GITHUB_REF_NAME" =~ ^desktop-preview-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo 'Expected a desktop-preview-vX.Y.Z tag.' >&2
+            exit 1
+          fi
+          if [[ "$GITHUB_REF_PROTECTED" != true ]]; then
+            echo 'A tag ruleset must protect desktop-preview-v*.' >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            echo 'The tagged commit must be reachable from origin/main.' >&2
+            exit 1
+          fi
+          printf 'version=%s\n' "${GITHUB_REF_NAME#desktop-preview-v}" >> "$GITHUB_OUTPUT"
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  package:
+    name: Sign ${{ matrix.platform }} update
+    needs: validate
+    environment: erp-desktop-preview
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            rust_targets: x86_64-pc-windows-msvc
+            bundles: nsis
+          - platform: macos-universal
+            runner: macos-15
+            target: universal-apple-darwin
+            rust_targets: aarch64-apple-darwin x86_64-apple-darwin
+            bundles: app,dmg
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/apps/erp-desktop/src-tauri/target
+      RUSTUP_TOOLCHAIN: stable
+      ERP_DESKTOP_ORIGIN: https://deploy.zhtaero.com
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Prepare Rust targets
+        shell: bash
+        env:
+          RUST_TARGETS: ${{ matrix.rust_targets }}
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          read -r -a targets <<< "$RUST_TARGETS"
+          rustup target add --toolchain stable "${targets[@]}"
+
+      - name: Install desktop dependencies
+        run: npm install --workspace @zhterp/web --workspace @zhterp/desktop --no-package-lock --no-audit --no-fund
+
+      - name: Prepare Tauri release configuration
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          ERP_UPDATER_PUBLIC_KEY: ${{ vars.ERP_UPDATER_PUBLIC_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:ERP_UPDATER_PUBLIC_KEY)) {
+              throw 'ERP_UPDATER_PUBLIC_KEY is required.'
+          }
+          $config = @{
+              version = $env:RELEASE_VERSION
+              bundle = @{ createUpdaterArtifacts = $true }
+              plugins = @{
+                  updater = @{
+                      pubkey = $env:ERP_UPDATER_PUBLIC_KEY.Trim()
+                      requireSignedVersion = $true
+                      endpoints = @('https://raw.githubusercontent.com/zht-innovation/zhterp-desktop/desktop-preview-feed/latest.json')
+                  }
+              }
+          }
+          $config | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'erp-desktop-release.json') -Encoding utf8NoBOM
+
+      - name: Build signed preview update
+        shell: pwsh
+        env:
+          TAURI_TARGET: ${{ matrix.target }}
+          TAURI_BUNDLES: ${{ matrix.bundles }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+              throw 'TAURI_SIGNING_PRIVATE_KEY is required.'
+          }
+          $configPath = Join-Path $env:RUNNER_TEMP 'erp-desktop-release.json'
+          npm exec --no --workspace @zhterp/desktop -- tauri build --target $env:TAURI_TARGET --bundles $env:TAURI_BUNDLES --config src-tauri/tauri.staging.conf.json --config $configPath
+
+      - name: Stage installers and update signatures
+        shell: pwsh
+        env:
+          TAURI_TARGET: ${{ matrix.target }}
+        run: |
+          $bundle = Join-Path $env:CARGO_TARGET_DIR "$env:TAURI_TARGET/release/bundle"
+          $release = New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP 'erp-preview-assets')
+          $config = Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'erp-desktop-release.json') -Raw | ConvertFrom-Json
+
+          function Read-MinisignLines($encoded) {
+              [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($encoded)).Trim() -split '\r?\n'
+          }
+
+          $publicKeyLines = @(Read-MinisignLines $config.plugins.updater.pubkey)
+          $publicKeyHeader = [Convert]::FromBase64String($publicKeyLines[1])
+          # The algorithm occupies two bytes, followed by the eight-byte minisign key ID.
+          $publicKeyId = [BitConverter]::ToString($publicKeyHeader, 2, 8)
+          $versionSuffix = "`tversion:$($config.version)"
+
+          function Copy-ReleaseFile($bundleName, $pattern, $name, $signed) {
+              $directory = Join-Path $bundle $bundleName
+              $files = @(Get-ChildItem -LiteralPath $directory -Filter $pattern -File -ErrorAction Stop)
+              if ($files.Count -ne 1 -or $files[0].Length -eq 0) {
+                  throw "Expected one nonempty $pattern in $directory."
+              }
+              Copy-Item -LiteralPath $files[0].FullName -Destination (Join-Path $release.FullName $name)
+              if ($signed) {
+                  $signature = Get-Item -LiteralPath "$($files[0].FullName).sig" -ErrorAction Stop
+                  if ($signature.PSIsContainer -or $signature.Length -eq 0) { throw "Invalid signature for $name." }
+                  $signatureLines = @(Read-MinisignLines (Get-Content -LiteralPath $signature.FullName -Raw))
+                  $signatureHeader = [Convert]::FromBase64String($signatureLines[1])
+                  if ([BitConverter]::ToString($signatureHeader, 2, 8) -cne $publicKeyId) {
+                      throw "Updater signing key for $name does not match ERP_UPDATER_PUBLIC_KEY."
+                  }
+                  if (!$signatureLines[2].EndsWith($versionSuffix, [StringComparison]::Ordinal)) {
+                      throw "Expected updater signature for $name to bind version $($config.version)."
+                  }
+                  Copy-Item -LiteralPath $signature.FullName -Destination (Join-Path $release.FullName "$name.sig")
+              }
+          }
+
+          if ($IsWindows) {
+              Copy-ReleaseFile 'nsis' '*-setup.exe' 'zh-erp-windows-x64-setup.exe' $true
+          } else {
+              Copy-ReleaseFile 'dmg' '*.dmg' 'zh-erp-macos-universal.dmg' $false
+              Copy-ReleaseFile 'macos' '*.app.tar.gz' 'zh-erp-macos-universal.app.tar.gz' $true
+          }
+
+      - name: Upload signed release assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: erp-preview-release-${{ matrix.platform }}
+          path: ${{ runner.temp }}/erp-preview-assets/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: [validate, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    concurrency:
+      group: erp-desktop-preview-publish
+      queue: max
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: erp-preview-release-*
+          path: ${{ runner.temp }}/erp-preview-assets
+          merge-multiple: true
+
+      - name: Publish GitHub prerelease and update feed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: |
+          python3 .github/scripts/publish-desktop-preview.py "$RUNNER_TEMP/erp-preview-assets"

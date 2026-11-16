@@ -5,6 +5,7 @@
     </NuxtLayout>
 
     <SystemUpdateDialog />
+    <DesktopAboutDialog v-if="desktop" />
 
     <div v-if="desktop && desktopConnection" class="desktop-connection" role="status">
         <span>{{ desktopConnection }}</span>

@@ -4,13 +4,14 @@ mod desktop_lifecycle;
 #[cfg(target_os = "windows")]
 mod desktop_notification_popup;
 mod desktop_notifications;
+mod desktop_updates;
 mod local_files;
 mod session;
 mod transport;
 
 use tauri::http::header::{HeaderValue, CONTENT_SECURITY_POLICY};
 use tauri::menu::{Menu, MenuItem, Submenu};
-use tauri::webview::{DownloadEvent, NewWindowResponse};
+use tauri::webview::{DownloadEvent, NewWindowResponse, PageLoadEvent};
 use tauri::{Manager, Url, WebviewUrl, WebviewWindowBuilder};
 
 pub(crate) const MAIN_WINDOW: &str = "erp";
@@ -51,7 +52,7 @@ fn main() {
         .app_name(context.config().identifier.clone())
         .arg(desktop_lifecycle::AUTOSTART_ARG)
         .build();
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _| {
             if !args.iter().skip(1).any(|arg| arg == desktop_lifecycle::AUTOSTART_ARG) {
                 desktop_lifecycle::show_main(app);
@@ -59,9 +60,20 @@ fn main() {
         }))
         .plugin(autostart)
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_notification::init());
+    let builder = if desktop_updates::is_enabled(context.config()) {
+        builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .manage(desktop_updates::DesktopUpdates::default())
+    } else {
+        builder
+    };
+    let app = builder
         .invoke_handler(tauri::generate_handler![
             transport::desktop_info,
+            desktop_lifecycle::desktop_about_ready,
+            desktop_updates::check_desktop_update,
+            desktop_updates::install_desktop_update,
             transport::erp_request,
             transport::upload_product_image,
             session::restore_desktop_session,
@@ -101,6 +113,11 @@ fn main() {
                 .visible(!start_hidden)
                 .devtools(false)
                 .use_https_scheme(true)
+                .on_page_load(|window, payload| {
+                    if payload.event() == PageLoadEvent::Started {
+                        desktop_lifecycle::reset_about_ready(window.app_handle());
+                    }
+                })
                 .on_web_resource_request(move |_, response| {
                     // Preserve the script hashes added by Tauri and add only the built-in ERP image origin.
                     if let Some(csp) = response.headers_mut().get_mut(CONTENT_SECURITY_POLICY) {

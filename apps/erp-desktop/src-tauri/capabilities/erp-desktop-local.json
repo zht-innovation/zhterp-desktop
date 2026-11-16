@@ -7,6 +7,9 @@
     "platforms": ["windows", "macOS"],
     "permissions": [
         "allow-desktop-info",
+        "allow-desktop-about-ready",
+        "allow-check-desktop-update",
+        "allow-install-desktop-update",
         "allow-erp-request",
         "allow-upload-product-image",
         "allow-restore-desktop-session",

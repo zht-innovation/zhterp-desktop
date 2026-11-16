@@ -8,7 +8,9 @@ use reqwest::{
     Client, Method, Response,
 };
 use serde::{Deserialize, Serialize};
-use tauri::{State, Url};
+use tauri::{AppHandle, Manager, State, Url};
+
+use crate::desktop_updates::{DesktopUpdates, STAGING_IDENTIFIER};
 
 pub(crate) const ERP_ORIGIN: &str = env!("ERP_DESKTOP_ORIGIN");
 pub(crate) const IMAGE_ORIGIN: &str = "https://server.zhtaero.com";
@@ -41,6 +43,9 @@ pub(crate) struct DesktopResponse {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DesktopInfo {
     erp_origin: &'static str,
+    version: String,
+    channel: &'static str,
+    updates_enabled: bool,
 }
 
 pub(crate) struct Transport {
@@ -276,8 +281,18 @@ async fn read_response(mut response: Response) -> Result<DesktopResponse, String
 }
 
 #[tauri::command]
-pub(crate) fn desktop_info() -> DesktopInfo {
-    DesktopInfo { erp_origin: ERP_ORIGIN }
+pub(crate) fn desktop_info(app: AppHandle) -> DesktopInfo {
+    let channel = if app.config().identifier == STAGING_IDENTIFIER {
+        "staging"
+    } else {
+        "stable"
+    };
+    DesktopInfo {
+        erp_origin: ERP_ORIGIN,
+        version: app.package_info().version.to_string(),
+        channel,
+        updates_enabled: app.try_state::<DesktopUpdates>().is_some(),
+    }
 }
 
 #[tauri::command]

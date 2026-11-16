@@ -1,10 +1,11 @@
 use std::error::Error;
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{App, AppHandle, Manager, WindowEvent, Wry};
+use tauri::{App, AppHandle, Emitter, EventTarget, Manager, WindowEvent, Wry};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -16,6 +17,8 @@ const QUIT_MENU: &str = "erp-quit";
 const OPEN_TRAY_MENU: &str = "erp-tray-open-main";
 const QUIT_TRAY_MENU: &str = "erp-tray-quit";
 const AUTOSTART_MENU: &str = "erp-toggle-autostart";
+const ABOUT_MENU: &str = "erp-about";
+const ABOUT_EVENT: &str = "erp-open-about";
 
 // A second launch may arrive before the main window has been created.
 static SHOW_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -23,11 +26,19 @@ static SHOW_REQUESTED: AtomicBool = AtomicBool::new(false);
 struct DesktopMenu {
     autostart: CheckMenuItem<Wry>,
     shortcut_warning_pending: AtomicBool,
+    about: Mutex<AboutMenu>,
+}
+
+#[derive(Default)]
+struct AboutMenu {
+    ready: bool,
+    open_requested: bool,
 }
 
 pub(crate) fn append_app_menu(app: &AppHandle, menu: &Menu<Wry>) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, OPEN_MENU, "打开 ERP", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, QUIT_MENU, "退出 ERP", true, None::<&str>)?;
+    let about = MenuItem::with_id(app, ABOUT_MENU, "关于 ERP", true, None::<&str>)?;
     let autostart = CheckMenuItem::with_id(
         app,
         AUTOSTART_MENU,
@@ -36,10 +47,11 @@ pub(crate) fn append_app_menu(app: &AppHandle, menu: &Menu<Wry>) -> tauri::Resul
         false,
         None::<&str>,
     )?;
-    menu.append(&Submenu::with_items(app, "桌面", true, &[&open, &autostart, &quit])?)?;
+    menu.append(&Submenu::with_items(app, "桌面", true, &[&open, &autostart, &about, &quit])?)?;
     app.manage(DesktopMenu {
         autostart,
         shortcut_warning_pending: AtomicBool::new(false),
+        about: Mutex::default(),
     });
     Ok(())
 }
@@ -124,8 +136,30 @@ pub(crate) fn handle_menu(app: &AppHandle, id: &str) {
         OPEN_MENU | OPEN_TRAY_MENU => show_main(app),
         QUIT_MENU | QUIT_TRAY_MENU => app.exit(0),
         AUTOSTART_MENU => toggle_autostart(app),
+        ABOUT_MENU => open_about(app),
         _ => {}
     }
+}
+
+#[tauri::command]
+pub(crate) fn desktop_about_ready(app: AppHandle) -> bool {
+    let menu = app.state::<DesktopMenu>();
+    let mut about = menu.about.lock().expect("ERP About menu state");
+    about.ready = true;
+    std::mem::take(&mut about.open_requested)
+}
+
+pub(crate) fn reset_about_ready(app: &AppHandle) {
+    let menu = app.state::<DesktopMenu>();
+    menu.about.lock().expect("ERP About menu state").ready = false;
+}
+
+fn open_about(app: &AppHandle) {
+    show_main(app);
+    let menu = app.state::<DesktopMenu>();
+    let mut about = menu.about.lock().expect("ERP About menu state");
+    about.open_requested = !about.ready
+        || app.emit_to(EventTarget::webview_window(crate::MAIN_WINDOW), ABOUT_EVENT, ()).is_err();
 }
 
 fn register_shortcut(app: &AppHandle) -> Result<(), Box<dyn Error>> {

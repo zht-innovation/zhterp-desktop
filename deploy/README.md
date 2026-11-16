@@ -32,7 +32,7 @@
 
 ## 桌面安装包下载
 
-将 `nginx/desktop-downloads.location.conf` 放到 `/etc/nginx/erp/`。试点通过后，在正式 ERP HTTPS 站点的 `server` 段启用 `include /etc/nginx/erp/desktop-downloads.location.conf;`。按现场调整发布目录，默认使用 `/srv/erp/releases`。配置预检通过后再加载。预发和正式下载使用各自的域名及发布目录。
+将 `nginx/desktop-downloads.location.conf` 放到 `/etc/nginx/erp/`。试点通过后，在正式 ERP HTTPS 站点的 `server` 段启用 `include /etc/nginx/erp/desktop-downloads.location.conf;`。按现场调整发布目录，默认使用 `/srv/erp/releases`。配置预检通过后再加载。[预发包从 GitHub Releases 发布](../apps/erp-desktop/README.md#预发版应用内升级)。
 
 在发布目录所在文件系统准备临时目录，将同一版本的已签名 Windows x64 NSIS 和已签名、公证的 macOS 通用 DMG 分别命名为 `zh-erp-windows-x64-setup.exe` 和 `zh-erp-macos-universal.dmg`。在临时目录生成并核对校验文件。
 
