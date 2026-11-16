@@ -6,7 +6,7 @@ import type {
     PurchaseRequestItem,
     InventoryReviewPurchaseContext,
 } from "~~/shared/types/approval";
-import { PURCHASE_REQUEST_CATEGORIES, PURCHASE_REQUEST_DEPARTMENTS } from "~~/shared/types/approval";
+import { PURCHASE_REQUEST_CATEGORIES } from "~~/shared/types/approval";
 import type { InventoryReviewLockSnapshot } from "~~/server/services/inventoryReviewLocks";
 import type { PurchaseBomGroup } from "~~/shared/types/purchaseBom";
 
@@ -81,7 +81,6 @@ const purchaseRequestSchema = new Schema<PurchaseRequestData>(
         },
         department: {
             type: String,
-            enum: ["", ...PURCHASE_REQUEST_DEPARTMENTS],
             default: "",
         },
         items: { type: [purchaseRequestItemSchema], default: [] },

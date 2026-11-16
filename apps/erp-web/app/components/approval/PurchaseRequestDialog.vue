@@ -24,8 +24,11 @@
 
                             <label class="form-field category-field">
                                 <span><i>*</i>采购类别</span>
-                                <select v-model="category" :disabled="isProductionPurchase || isSubmittedOrderPurchase">
+                                <select v-model="category" :disabled="working || loadingCategoryOptions || Boolean(categoryOptionsError) || inspectingOrderStock || isProductionPurchase || isSubmittedOrderPurchase">
                                     <option v-if="!isProductionPurchase" value="" disabled>请选择</option>
+                                    <option v-if="category && !availableCategories.includes(category)" :value="category" disabled>
+                                        {{ category }}{{ loadingCategoryOptions ? "" : "（当前不可提交）" }}
+                                    </option>
                                     <option v-for="item in availableCategories" :key="item" :value="item">
                                         {{ item }}
                                     </option>
@@ -33,13 +36,8 @@
                             </label>
 
                             <label class="form-field department-field">
-                                <span><i v-if="!canConfirmBomCovered">*</i>部门</span>
-                                <select v-model="department" :disabled="working">
-                                    <option value="">请选择</option>
-                                    <option v-for="item in PURCHASE_REQUEST_DEPARTMENTS" :key="item" :value="item">
-                                        {{ item }}
-                                    </option>
-                                </select>
+                                <span>部门</span>
+                                <input :value="departmentDisplayName" readonly>
                             </label>
 
                             <label v-if="isProductionPurchase" class="form-field sales-order-field">
@@ -98,6 +96,17 @@
                             </div>
                         </div>
                     </section>
+
+                    <p v-if="categoryAccessError && !canConfirmBomCovered" class="production-context-error" role="status">
+                        {{ categoryAccessError }}
+                        <button v-if="!loadingCategoryOptions" type="button" :disabled="working" @click="loadCategoryOptions">重新读取</button>
+                    </p>
+                    <p v-if="canInspectOrderStock" class="bom-stock-hint">
+                        可单独检查销售订单库存；需要采购时仍须取得对应类别权限。
+                        <button type="button" :disabled="working || loadingRequirements" @click="toggleOrderStockInspection">
+                            {{ inspectingOrderStock ? "返回类别选择" : "检查销售订单库存" }}
+                        </button>
+                    </p>
 
                     <section class="purchase-detail-card">
                         <header class="detail-card-heading">
@@ -261,7 +270,7 @@
                     <button v-if="!canConfirmBomCovered" class="dialog-button draft" type="button" :disabled="working || Boolean(productionContextError) || Boolean(orderContextError)" @click="save('save-draft')">
                         保存草稿
                     </button>
-                    <button class="dialog-button confirm" type="button" :disabled="working || Boolean(productionContextError) || Boolean(orderContextError)" @click="save(canConfirmBomCovered ? 'confirm-bom-covered' : 'submit')">
+                    <button class="dialog-button confirm" type="button" :disabled="working || Boolean(productionContextError) || Boolean(orderContextError) || (!canConfirmBomCovered && Boolean(categoryAccessError))" @click="save(canConfirmBomCovered ? 'confirm-bom-covered' : 'submit')">
                         {{ working ? "处理中" : canConfirmBomCovered ? "确认无需采购" : "确认提交" }}
                     </button>
                 </template>
@@ -363,16 +372,15 @@ import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import ProductPickerDialog from "~/components/configuration/inventory/ProductPickerDialog.vue";
 import type { ProductPickerColumn, ProductPickerLoadParams } from "~/components/configuration/inventory/ProductPickerDialog.vue";
 import FileUploader from "~/components/configuration/sales/FileUploader.vue";
-import { retrievePurchaseRequestBomPreview, submitPurchaseRequest } from "~/composables/api/useApprovalApi";
+import { retrievePurchaseRequestBomPreview, retrievePurchaseRequestOptions, submitPurchaseRequest } from "~/composables/api/useApprovalApi";
 import { retrieveSalesOrderList } from "~/composables/api/useCustomerApi";
 import { normalizeProductPickerItem, type ProductPickerItem } from "~/composables/inventory/useInventoryProductPickerData";
 import { getToken } from "~/utils/auth";
 import type { PurchaseRequestListItem } from "~/types/approval";
 import {
     PURCHASE_REQUEST_CATEGORIES,
-    PURCHASE_REQUEST_DEPARTMENTS,
     type AttachmentRef,
-    type PurchaseRequestDepartment,
+    type PurchaseRequestOptions,
 } from "~~/shared/types/approval";
 import { isApprovalApplicantRole } from "~~/shared/enums";
 import {
@@ -436,8 +444,57 @@ const loadingProduction = ref(false);
 const productionLoadError = ref("");
 let productionLoadSequence = 0;
 const category = ref(isProductionPurchase.value ? "生产用料采购" : props.initialDraft?.category || "");
-const department = ref<PurchaseRequestDepartment | "">(props.initialDraft?.department || "");
-const availableCategories = computed(() => isProductionPurchase.value ? ["生产用料采购"] : PURCHASE_REQUEST_CATEGORIES);
+const categoryOptions = ref<PurchaseRequestOptions | null>(null);
+const loadingCategoryOptions = ref(true);
+const categoryOptionsError = ref("");
+const departmentDisplayName = computed(() => {
+    if (loadingCategoryOptions.value) return "加载中…";
+    if (categoryOptionsError.value) return "读取失败";
+    return categoryOptions.value?.departmentName || "未分配部门";
+});
+let categoryOptionsLoadSequence = 0;
+const availableCategories = computed<string[]>(() => {
+    const allowed = categoryOptions.value?.categories || [];
+    return PURCHASE_REQUEST_CATEGORIES.filter((item) =>
+        allowed.includes(item) && (!isProductionPurchase.value || item === "生产用料采购"),
+    );
+});
+const categoryAccessError = computed(() => {
+    if (loadingCategoryOptions.value) return "正在读取采购类别权限…";
+    if (categoryOptionsError.value) return categoryOptionsError.value;
+    if (!categoryOptions.value) return "采购类别权限尚未加载";
+    if (categoryOptions.value.unavailableReason) return categoryOptions.value.unavailableReason;
+    if (!availableCategories.value.length) return "所属部门没有可用于本次申请的采购类别，请联系管理员配置";
+    if (category.value && !availableCategories.value.includes(category.value)) {
+        return "当前所属部门不允许提交此采购类别，请重新选择或联系管理员调整";
+    }
+    return "";
+});
+const loadCategoryOptions = async () => {
+    const sequence = ++categoryOptionsLoadSequence;
+    loadingCategoryOptions.value = true;
+    categoryOptionsError.value = "";
+    categoryOptions.value = null;
+    try {
+        const response = await retrievePurchaseRequestOptions();
+        if (sequence !== categoryOptionsLoadSequence) return;
+        if (response.code !== 200 || !Array.isArray(response.data?.categories)) {
+            throw new Error(response.msg || "读取采购类别权限失败");
+        }
+        categoryOptions.value = response.data;
+    } catch (error: any) {
+        if (sequence !== categoryOptionsLoadSequence) return;
+        categoryOptionsError.value = error?.data?.msg || error?.message || "读取采购类别权限失败，请重试";
+    } finally {
+        if (sequence === categoryOptionsLoadSequence) loadingCategoryOptions.value = false;
+    }
+};
+watch(
+    [() => adminInfo.value?.username, () => adminInfo.value?.role, () => adminInfo.value?.departmentId],
+    () => { void loadCategoryOptions(); },
+    { immediate: true },
+);
+onBeforeUnmount(() => { categoryOptionsLoadSequence++; });
 const productionContextError = computed(() => {
     if (!isProductionPurchase.value) return "";
     const role = Number(adminInfo.value?.role);
@@ -497,6 +554,35 @@ const attachmentText = ref(props.initialDraft?.attachmentText ?? "");
 const remark = ref(props.initialDraft?.remark || "");
 const working = ref(false);
 const isOrderPurchase = computed(() => category.value === "销售订单采购");
+const inspectingOrderStock = ref(false);
+let orderStockInspectionDraft: { category: string; items: FormItem[] } | null = null;
+const canInspectOrderStock = computed(() =>
+    !props.initialDraft && !isProductionPurchase.value
+    && canSubmitPurchaseRequest(Number(adminInfo.value?.role))
+    && (inspectingOrderStock.value || (!isOrderPurchase.value && !availableCategories.value.includes("销售订单采购"))),
+);
+const toggleOrderStockInspection = () => {
+    if (working.value || loadingRequirements.value || !canInspectOrderStock.value) return;
+    if (inspectingOrderStock.value) {
+        category.value = orderStockInspectionDraft?.category || "";
+        items.value = orderStockInspectionDraft?.items || [];
+        orderStockInspectionDraft = null;
+        inspectingOrderStock.value = false;
+    } else {
+        // 单独检查库存时保留原输入，退出后不把 BOM 预览物料带入其他类别。
+        orderStockInspectionDraft = {
+            category: category.value,
+            items: items.value.map((item) => ({ ...item })),
+        };
+        category.value = "销售订单采购";
+        items.value = [];
+        inspectingOrderStock.value = true;
+    }
+    salesOrderId.value = "";
+    salesOrderNo.value = "";
+    bomGroups.value = [];
+    bomExpansion.value = null;
+};
 const hasClearableProducts = computed(() => isOrderPurchase.value
     ? items.value.some((item) => !item.requirementId && !item.bomLineKey)
     : items.value.length > 0);
@@ -883,7 +969,6 @@ const validate = () => {
     if (productionContextError.value) return productionContextError.value;
     if (orderContextError.value) return orderContextError.value;
     if (!category.value) return "请选择采购类别";
-    if (!department.value) return "请选择部门";
     if (isOrderPurchase.value && (!salesOrderId.value || !items.value.some((item) => item.requirementId || item.bomLineKey))) {
         return "请选择销售订单并确认缺口物料";
     }
@@ -929,7 +1014,7 @@ const save = async (action: "save-draft" | "submit" | "confirm-bom-covered") => 
     const errorMessage = productionContextError.value || orderContextError.value
         || (attachmentText.value.length > 500 ? "附件不能超过500字符" : "")
         || (action === "confirm-bom-covered" && !canConfirmBomCovered.value ? "请重新读取 BOM 采购明细" : "")
-        || (action === "submit" ? validate() : "");
+        || (action === "submit" ? categoryAccessError.value || validate() : "");
     if (errorMessage) {
         ElMessage.warning(errorMessage);
         return;
@@ -943,7 +1028,6 @@ const save = async (action: "save-draft" | "submit" | "confirm-bom-covered") => 
         formData.append("expectedUpdateTime", props.initialDraft.updateTime);
     }
     formData.append("category", category.value);
-    if (action !== "confirm-bom-covered") formData.append("department", department.value);
     if (isProductionPurchase.value) {
         formData.append("productionOrderId", productionOrderId.value);
         formData.append("productionOrderNo", productionOrderNo.value);
@@ -977,6 +1061,7 @@ const save = async (action: "save-draft" | "submit" | "confirm-bom-covered") => 
         if (response.code !== 200) {
             const message = response.msg || (action === "confirm-bom-covered" ? "无需采购确认失败" : action === "submit" ? "采购申请提交失败" : "草稿保存失败");
             if (isOrderPurchase.value && response.code === 409) requirementsLoadError.value = message;
+            if (action === "submit" && response.code === 403) void loadCategoryOptions();
             ElMessage.error(message);
             return;
         }
@@ -993,6 +1078,9 @@ const save = async (action: "save-draft" | "submit" | "confirm-bom-covered") => 
             || (action === "confirm-bom-covered" ? "无需采购确认失败" : action === "submit" ? "采购申请提交失败" : "草稿保存失败");
         if (isOrderPurchase.value && Number(error?.statusCode || error?.status || error?.response?.status) === 409) {
             requirementsLoadError.value = message;
+        }
+        if (action === "submit" && Number(error?.statusCode || error?.status || error?.response?.status) === 403) {
+            void loadCategoryOptions();
         }
         ElMessage.error(message);
     } finally {

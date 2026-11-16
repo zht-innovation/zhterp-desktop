@@ -5,6 +5,8 @@ import { useAdminModel } from "../models/admin.model";
 import { getNotificationAdmin } from "./notificationAdmin";
 import { ADMIN_ROLE, ADMIN_ROLE_NAME } from "~~/shared/enums";
 import type { CurrentDepartment, DepartmentSnapshot } from "~~/shared/types/department";
+import type { PurchaseRequestCategory } from "~~/shared/types/approval";
+import { parsePurchaseRequestCategories } from "./purchaseRequestCategory";
 
 const handleDepartmentLookupError = (error: unknown) => {
     if (error instanceof mongoose.Error.CastError && error.path === "_id") return null;
@@ -59,13 +61,20 @@ export const assignDepartment = async (value: unknown, session: mongoose.ClientS
 };
 
 export const updateDepartment = async (body: any) => {
-    const updates: { name?: string; status?: "enabled" | "disabled" } = {};
+    const updates: {
+        name?: string;
+        status?: "enabled" | "disabled";
+        purchaseRequestCategories?: PurchaseRequestCategory[];
+    } = {};
     if (Object.hasOwn(body, "name")) updates.name = parseDepartmentName(body.name);
     if (Object.hasOwn(body, "status")) {
         if (!["enabled", "disabled"].includes(body.status)) throw createError({ statusCode: 400, message: "部门状态无效" });
         updates.status = body.status;
     }
-    if (!Object.keys(updates).length) throw createError({ statusCode: 400, message: "请提供部门名称或状态" });
+    if (Object.hasOwn(body, "purchaseRequestCategories")) {
+        updates.purchaseRequestCategories = parsePurchaseRequestCategories(body.purchaseRequestCategories);
+    }
+    if (!Object.keys(updates).length) throw createError({ statusCode: 400, message: "请提供部门名称、状态或采购申请类别" });
     await mongoose.connection.transaction(async (session) => {
         const department = await lockDepartment(body.id, session);
         if (!department) throw createError({ statusCode: 404, message: "部门不存在" });

@@ -122,10 +122,13 @@
             </div>
 
             <NuxtLink
+                v-if="!desktop || settingsModule"
                 class="back-link"
-                to="/configuration"
+                :class="{ active: desktop && activeModuleId === 'settings' }"
+                :to="desktop ? '/configuration/settings' : '/configuration'"
                 :external="!desktop"
-                :title="desktop ? '系统设置（返回配置界面）' : isSidebarExpanded ? undefined : '返回配置界面'"
+                :aria-current="desktop && activeModuleId === 'settings' ? 'page' : undefined"
+                :title="desktop ? '系统设置' : isSidebarExpanded ? undefined : '返回配置界面'"
             >
                 <Icon :name="desktop ? 'lucide:sliders-horizontal' : 'lucide:log-out'" class="back-icon" />
                 <span v-if="desktop || isSidebarExpanded">{{ desktop ? '系统设置' : '返回配置界面' }}</span>
@@ -208,7 +211,7 @@ import {
     isElectronicsWarehouseKeeper,
 } from "~~/shared/utils/adminPermission";
 
-type ErpModuleId = "home" | "sales" | "inventory" | "production" | "purchase" | "finance" | "approval" | "notification";
+type ErpModuleId = "home" | "sales" | "inventory" | "production" | "purchase" | "finance" | "approval" | "notification" | "settings";
 
 interface SidebarItem {
     id: string;
@@ -292,6 +295,7 @@ const activeModuleId = computed<ErpModuleId>(() => {
         "finance",
         "approval",
         "notification",
+        "settings",
     ];
 
     return routeModule && moduleIds.includes(routeModule)
@@ -367,9 +371,20 @@ const allNavigationModules = computed<NavigationModule[]>(() => [
         icon: "lucide:volume-2",
         path: "/configuration/notification",
     },
+    {
+        id: "settings",
+        label: "设置",
+        title: "系统设置",
+        icon: "lucide:settings",
+        path: "/configuration/settings",
+    },
 ]);
 
 const canShowModule = (moduleId: NavigationModule["id"]) => {
+    if (moduleId === "settings") {
+        return canAccessConfigurationPath(role.value, "/configuration/settings");
+    }
+
     if (isElectronicsWarehouseKeeper(role.value)) {
         return moduleId === "inventory" || moduleId === "purchase";
     }
@@ -464,8 +479,9 @@ const navigationModules = computed(() =>
 
 // Reuse the already-authorized navigation result; only the desktop entry position changes.
 const notificationModule = computed(() => navigationModules.value.find((module) => module.id === "notification"));
+const settingsModule = computed(() => navigationModules.value.find((module) => module.id === "settings"));
 const railModules = computed(() => desktop
-    ? navigationModules.value.filter((module) => module.id !== "notification")
+    ? navigationModules.value.filter((module) => module.id !== "notification" && module.id !== "settings")
     : navigationModules.value,
 );
 
@@ -993,7 +1009,8 @@ button {
     transition: color 0.16s ease;
 }
 
-.back-link:hover {
+.back-link:hover,
+.back-link.active {
     color: var(--erp-color-action-primary);
 }
 

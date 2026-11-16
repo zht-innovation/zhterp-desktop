@@ -1,8 +1,13 @@
 import mongoose from "mongoose";
+import { PURCHASE_REQUEST_CATEGORIES } from "~~/shared/types/approval";
 
 const schema = new mongoose.Schema({
     name: { type: String, required: true, trim: true, maxlength: 40 },
     status: { type: String, enum: ["enabled", "disabled"], default: "enabled", required: true },
+    purchaseRequestCategories: {
+        type: [{ type: String, enum: PURCHASE_REQUEST_CATEGORIES }],
+        default: undefined,
+    },
 }, { versionKey: false, timestamps: true });
 
 schema.index({ name: 1 }, { unique: true });

@@ -9,6 +9,7 @@ import {
 import {
     assertPurchaseRequestDetailAccess,
     retrievePurchaseRequests,
+    retrievePurchaseRequestOptions,
 } from "~~/server/services/purchaseRequest";
 import { CODE, codeToMsg } from "~~/server/utils/code";
 import { logger } from "~~/server/utils/logger";
@@ -21,12 +22,15 @@ export default defineEventHandler(async (event) => {
         const id = Array.isArray(query.id) ? query.id[0] : query.id;
         if (
             isElectronicsWarehouseKeeper(Number(event.context.auth?.role))
-            && !["purchase-request", "purchase-request-detail", "inventory-review-locks", "kit-analysis"].includes(String(resource || ""))
+            && !["purchase-request", "purchase-request-detail", "purchase-request-options", "inventory-review-locks", "kit-analysis"].includes(String(resource || ""))
         ) {
             throw new ApprovalCenterError(403, "电子部库管仅可查询采购申请资源");
         }
         let data;
-        if (resource === "inventory-review-locks") {
+        if (resource === "purchase-request-options") {
+            setHeader(event, "Cache-Control", "private, no-store");
+            data = await retrievePurchaseRequestOptions(event.context.auth);
+        } else if (resource === "inventory-review-locks") {
             setHeader(event, "Cache-Control", "private, no-store");
             data = { details: await retrieveApprovalInventoryReviewLocks(event.context.auth, id, query.productId) };
         } else if (resource === "kit-analysis") {

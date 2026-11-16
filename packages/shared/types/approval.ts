@@ -143,17 +143,14 @@ export const PURCHASE_REQUEST_CATEGORIES = [
 
 export type PurchaseRequestCategory = typeof PURCHASE_REQUEST_CATEGORIES[number];
 
-export const PURCHASE_REQUEST_DEPARTMENTS = [
-    "测试",
-    "研发",
-    "机械研发",
-    "行政",
-    "运营",
-    "生产",
-    "其他",
-] as const;
+export interface PurchaseRequestOptions {
+    departmentId: string | null;
+    departmentName: string | null;
+    categories: PurchaseRequestCategory[];
+    unavailableReason?: string;
+}
 
-export type PurchaseRequestDepartment = typeof PURCHASE_REQUEST_DEPARTMENTS[number];
+export type PurchaseRequestDepartment = string;
 
 export const PURCHASE_REQUEST_DISPLAY_STATUSES = [
     ...APPROVAL_STATUSES,

@@ -12,5 +12,14 @@ export default defineEventHandler((event) => withDepartment(event, false, async 
         throw createError({ statusCode: 403, message: "无权查看停用部门" });
     }
     const rows: any[] = await Department.find(includeDisabled === "true" ? {} : { status: "enabled" }).sort({ createdAt: 1, _id: 1 }).lean();
-    return { departments: rows.map((row) => ({ id: String(row._id), name: row.name, status: row.status })) };
+    return {
+        departments: rows.map((row) => ({
+            id: String(row._id),
+            name: row.name,
+            status: row.status,
+            ...(Number(admin.role) === ADMIN_ROLE.SUPER
+                ? { purchaseRequestCategories: row.purchaseRequestCategories }
+                : {}),
+        })),
+    };
 }));

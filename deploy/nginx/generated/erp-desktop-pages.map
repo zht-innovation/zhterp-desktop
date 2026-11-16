@@ -43,4 +43,5 @@
 "~^/configuration/sales/order/print/?$" 1;
 "~^/configuration/sales/order/receipt/?$" 1;
 "~^/configuration/sales/sale/?$" 1;
+"~^/configuration/settings/?$" 1;
 "~^//?$" 1;

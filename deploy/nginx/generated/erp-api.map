@@ -44,6 +44,7 @@
 "~^PUT:/customer/update/?$" api;
 "~^GET:/dashboard/stats/?$" api;
 "~^GET:/department/retrieve/?$" account;
+"~^PUT:/department/update/?$" account;
 "~^GET:/finance/cost/accessory-retrieve/?$" api;
 "~^GET:/finance/cost/detail/?$" api;
 "~^GET:/finance/cost/machine-retrieve/?$" api;

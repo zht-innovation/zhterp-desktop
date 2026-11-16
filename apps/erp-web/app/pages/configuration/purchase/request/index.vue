@@ -28,12 +28,13 @@
                 </label>
                 <label class="filter-field">
                     <span>部门</span>
-                    <select v-model="filterForm.department" :disabled="loading">
-                        <option value="">请选择</option>
-                        <option v-for="department in PURCHASE_REQUEST_DEPARTMENTS" :key="department" :value="department">
-                            {{ department }}
-                        </option>
-                    </select>
+                    <input
+                        v-model.trim="filterForm.department"
+                        :disabled="loading"
+                        maxlength="40"
+                        placeholder="请输入部门名称"
+                        @keyup.enter="applyFilters"
+                    >
                 </label>
                 <label class="filter-field">
                     <span>审批状态</span>
@@ -311,9 +312,7 @@ import {
 } from "~~/shared/utils/adminPermission";
 import {
     PURCHASE_REQUEST_CATEGORIES,
-    PURCHASE_REQUEST_DEPARTMENTS,
     type PurchaseRequestCategory,
-    type PurchaseRequestDepartment,
 } from "~~/shared/types/approval";
 
 definePageMeta({
@@ -374,7 +373,7 @@ const showDetailDialog = ref(false);
 const selectedDetail = ref<ApprovalDetailItem | null>(null);
 const filterForm = reactive({
     category: "",
-    department: "" as PurchaseRequestDepartment | "",
+    department: "",
     status: "" as Exclude<PurchaseRequestDisplayStatus, "draft"> | "",
     approvalNo: "",
     applicant: "",
@@ -586,7 +585,6 @@ const buildDraftSubmitForm = (row: PurchaseRequestListItem) => {
     formData.append("requestId", row.id);
     formData.append("expectedUpdateTime", row.updateTime);
     formData.append("category", row.category);
-    formData.append("department", row.department || "");
     if (row.productionOrderId) {
         formData.append("productionOrderId", row.productionOrderId);
         formData.append("productionOrderNo", row.productionOrderNo || "");
@@ -612,11 +610,6 @@ const reloadAfterRowRemoval = async () => {
 
 const submitDraft = async (row: PurchaseRequestListItem) => {
     if (actionLoading.value) return;
-    if (!row.department) {
-        ElMessage.warning("请先选择部门后提交采购申请");
-        await editDraft(row);
-        return;
-    }
     try {
         await erpMessageBox.confirm(
             `确认提交采购申请草稿 ${row.requestNo}？`,

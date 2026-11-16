@@ -2,6 +2,7 @@ import { getToken } from "~/utils/auth";
 import type { OrderKitAnalysisResult } from "~~/shared/types/orderKitAnalysis";
 import type { InventoryReviewLockDetails } from "~~/shared/types/inventoryReview";
 import type { PurchaseBomPreview } from "~~/shared/types/purchaseBom";
+import type { PurchaseRequestOptions } from "~~/shared/types/approval";
 import type {
     ApprovalActionData,
     ApprovalApplicantsData,
@@ -127,6 +128,13 @@ export const updateApprovalFlow = (config: ApprovalFlowConfig) =>
         method: "POST",
         headers: approvalHeaders(),
         body: config,
+    });
+
+export const retrievePurchaseRequestOptions = () =>
+    $fetch<ApprovalApiResponse<PurchaseRequestOptions>>("/approval-center/retrieve", {
+        method: "GET",
+        headers: approvalHeaders(),
+        query: { resource: "purchase-request-options" },
     });
 
 export const submitPurchaseRequest = (formData: FormData) =>

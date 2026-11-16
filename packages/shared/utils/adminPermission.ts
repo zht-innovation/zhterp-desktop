@@ -294,6 +294,7 @@ const ERP_CONFIGURATION_PATHS = [
     "/configuration/purchase",
     "/configuration/finance",
     "/configuration/notification",
+    "/configuration/settings",
 ] as const;
 
 const matchesConfigurationPath = (path: string, allowedPath: string) => {
@@ -327,6 +328,10 @@ export const isErpConfigurationPath = (path: string) => {
 export const canAccessConfigurationPath = (role: number, path: string) => {
     if (!Number.isInteger(role)) {
         return false;
+    }
+
+    if (matchesConfigurationPath(path.split(/[?#]/)[0], "/configuration/settings")) {
+        return role === ADMIN_ROLE.SUPER;
     }
 
     if (path === "/configuration") {

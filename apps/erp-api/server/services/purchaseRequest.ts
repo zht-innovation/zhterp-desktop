@@ -3,6 +3,7 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import mongoose from "mongoose";
 import { getHeader, readMultipartFormData } from "h3";
+import { Department } from "~~/server/models/department.model";
 import { useAdminModel } from "~~/server/models/admin.model";
 import { ApprovalInstance } from "~~/server/models/approvalInstance.model";
 import { useInventoryCounterModel } from "~~/server/models/inventoryCounter.model";
@@ -31,14 +32,14 @@ import { applyPurchaseRequestBom } from "./purchaseRequestBom";
 import { refreshSalesOrderFulfillmentStatus } from "./salesOrderFulfillment";
 import type { PurchaseBomExpansion, PurchaseBomGroup } from "~~/shared/types/purchaseBom";
 import { cloneInventoryReviewPurchaseContext } from "./inventoryReviewPurchase";
+import { assertPurchaseRequestCategoryAllowed, resolvePurchaseRequestOptions } from "./purchaseRequestCategory";
 import {
     PURCHASE_REQUEST_CATEGORIES,
-    PURCHASE_REQUEST_DEPARTMENTS,
     PURCHASE_REQUEST_DISPLAY_STATUSES,
     type ApprovalAttachmentMetadata,
     type AttachmentRef,
     type PurchaseRequestCategory,
-    type PurchaseRequestDepartment,
+    type PurchaseRequestOptions,
     type PurchaseRequestDisplayStatus,
     type PurchaseRequestItem,
     type PurchaseRequestSnapshot,
@@ -64,6 +65,7 @@ type CurrentRequestAdmin = {
     username: string;
     name: string;
     role: number;
+    departmentId: string | null;
     canViewAll: boolean;
     canDeleteSubmitted: boolean;
 };
@@ -80,7 +82,6 @@ type ParsedPayload = {
     requestId: string;
     expectedUpdateTime: string;
     category: PurchaseRequestCategory | "";
-    department: PurchaseRequestDepartment | "";
     items: PurchaseRequestItem[];
     attachmentText?: string;
     remark: string;
@@ -136,9 +137,27 @@ const getCurrentAdmin = async (auth: any): Promise<CurrentRequestAdmin> => {
         username: textValue(admin.username),
         name: textValue(admin.nickname) || textValue(admin.username),
         role,
+        departmentId: admin.departmentId ? String(admin.departmentId) : null,
         canViewAll: canViewAllPurchaseRequests(role),
         canDeleteSubmitted: canDeleteSubmittedPurchaseRequest(role),
     };
+};
+
+const getCurrentPurchaseRequestOptions = async (admin: CurrentRequestAdmin): Promise<PurchaseRequestOptions> => {
+    const department = admin.departmentId && mongoose.Types.ObjectId.isValid(admin.departmentId)
+        ? await Department.findById(admin.departmentId)
+            .select("name status purchaseRequestCategories")
+            .lean<{ name: string; status: string; purchaseRequestCategories?: PurchaseRequestCategory[] } | null>()
+        : null;
+    return resolvePurchaseRequestOptions(admin, department);
+};
+
+export const retrievePurchaseRequestOptions = async (auth: any): Promise<PurchaseRequestOptions> => {
+    const admin = await getCurrentAdmin(auth);
+    if (!canSubmitPurchaseRequest(admin.role)) {
+        throw new PurchaseRequestError(403, "当前角色不能发起采购申请");
+    }
+    return getCurrentPurchaseRequestOptions(admin);
 };
 
 const parseJsonArray = (value: string, label: string): unknown[] => {
@@ -353,16 +372,6 @@ const readPayload = async (event: any): Promise<ParsedPayload> => {
     if (action === "submit" && !categoryText) {
         throw new PurchaseRequestError(400, "请选择采购类别");
     }
-    const departmentText = textValue(fields.get("department"));
-    if (
-        departmentText
-        && !PURCHASE_REQUEST_DEPARTMENTS.includes(departmentText as PurchaseRequestDepartment)
-    ) {
-        throw new PurchaseRequestError(400, "请选择有效的部门");
-    }
-    if (action === "submit" && !departmentText) {
-        throw new PurchaseRequestError(400, "请选择部门");
-    }
     const salesOrderId = textValue(fields.get("salesOrderId"));
     const salesOrderNo = textValue(fields.get("salesOrderNo"));
     const productionOrderId = textValue(fields.get("productionOrderId"));
@@ -395,7 +404,6 @@ const readPayload = async (event: any): Promise<ParsedPayload> => {
         requestId: textValue(fields.get("requestId")),
         expectedUpdateTime: textValue(fields.get("expectedUpdateTime")),
         category: categoryText as PurchaseRequestCategory | "",
-        department: departmentText as PurchaseRequestDepartment | "",
         items: parseItems(fields.get("items") || "", action === "submit", categoryText === "销售订单采购" ? 3 : 1),
         attachmentText,
         remark,
@@ -529,8 +537,8 @@ export const retrievePurchaseRequests = async (
     const limit = toPositiveInteger(query.limit, 15, 100);
     const category = textValue(query.category);
     const department = textValue(query.department);
-    if (department && !PURCHASE_REQUEST_DEPARTMENTS.includes(department as PurchaseRequestDepartment)) {
-        throw new PurchaseRequestError(400, "请选择有效的部门");
+    if (department.length > 40) {
+        throw new PurchaseRequestError(400, "部门名称不能超过 40 字");
     }
     const approvalNo = textValue(query.approvalNo);
     const applicant = textValue(query.applicant);
@@ -818,6 +826,14 @@ export const submitPurchaseRequest = async (event: any) => {
         throw new PurchaseRequestError(403, "当前角色不能发起采购申请");
     }
     const payload = await readPayload(event);
+    let department = "";
+    if (payload.action !== "confirm-bom-covered") {
+        const options = await getCurrentPurchaseRequestOptions(admin);
+        department = options.departmentName || "";
+        if (payload.action === "submit") {
+            assertPurchaseRequestCategoryAllowed(options, payload.category);
+        }
+    }
     const requestModel = usePurchaseRequestModel();
     const draft = payload.requestId
         ? await requestModel.findOwnedDraftById(
@@ -942,7 +958,7 @@ export const submitPurchaseRequest = async (event: any) => {
         );
         const requestData = {
             category: payload.category,
-            department: payload.department,
+            department,
             items: payload.items,
             bomGroups: [] as PurchaseBomGroup[],
             totalQuantity,
@@ -1090,7 +1106,7 @@ export const submitPurchaseRequest = async (event: any) => {
             const snapshot: PurchaseRequestSnapshot = {
                 requestNo: request.requestNo,
                 category: payload.category as PurchaseRequestCategory,
-                department: payload.department,
+                department,
                 items: payload.items,
                 bomGroups: requestData.bomGroups,
                 totalQuantity,
