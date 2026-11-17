@@ -530,6 +530,9 @@
 
 <script setup lang="ts">
 import { resolveErpImageUrl } from "~/utils/attachmentPreview";
+import { isDesktop } from "~/utils/desktop";
+import { assertDesktopPrintAvailable, openDesktopPrint, snapshotDesktopSalesPages } from "~/utils/desktopPrint";
+import { getToken } from "~/utils/auth";
 import { getSalesOrderPaymentPlans, getSalesOrderPaymentTotals } from "~~/shared/utils/salesOrderPayment";
 import { getSalesOrderDeliveryDate } from "~~/shared/utils/salesOrderDelivery";
 
@@ -1037,6 +1040,26 @@ const increasePreviewZoom = () => updatePreviewZoom(previewZoomPercent.value + P
 const resetPreviewZoom = () => updatePreviewZoom(100)
 
 const printDocument = async () => {
+    if (isDesktop()) {
+        try {
+            assertDesktopPrintAvailable();
+            const printToken = getToken();
+            printTime.value = formatDateTime();
+            await nextTick();
+            const sourceIds = orders.value.map((order) => String(order._id || order.id || ""));
+            if (sourceIds.some((id) => !id)) throw new Error("单据缺少业务 ID，无法校验打印权限");
+            const pages = await snapshotDesktopSalesPages(Array.from(document.querySelectorAll<HTMLElement>(".preview-pane > .print-page")));
+            if (!printToken || printToken !== getToken()) throw new Error("登录会话已变化，请重新打开单据后打印");
+            openDesktopPrint({ kind: "sales", title: `销售单据 · ${sourceIds.length} 单`, sourceIds,
+                preferredSize: { widthMm: 210, heightMm: 297 }, buildPages: async (settings) => {
+                    if (Math.abs(settings.paper.widthMm - 210) > 0.2 || Math.abs(settings.paper.heightMm - 297) > 0.2 || settings.landscape) {
+                        throw new Error("现有销售模板为 A4 纵向，请选择匹配纸型，避免内容被缩放或裁切");
+                    }
+                    return [...pages];
+                } });
+        } catch (error) { ElMessage.error(error instanceof Error ? error.message : String(error)); }
+        return;
+    }
     printTime.value = formatDateTime()
     await nextTick()
     window.print()

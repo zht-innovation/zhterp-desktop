@@ -234,6 +234,35 @@ fn fit_bounds(window: &WebviewWindow, bounds: Option<&Bounds>, monitor: &Monitor
     if window.outer_position()? != position {
         window.set_position(position)?;
     }
+    // Crossing onto a smaller display may change DPI only after the final move.
+    if window.inner_size()? != size {
+        window.set_size(size)?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn reset_desktop_window_layout(window: WebviewWindow) -> Result<(), String> {
+    if window.label() != crate::MAIN_WINDOW { return Err("Main window required".into()); }
+    let app = window.app_handle();
+    let state = app.state::<WindowState>();
+    if state.adjusting.swap(true, Ordering::AcqRel) { return Err("窗口正在调整，请稍后重试".into()); }
+    let result = (|| -> tauri::Result<()> {
+        window.set_fullscreen(false)?;
+        window.unmaximize()?;
+        window.unminimize()?;
+        let screens = monitors(&window)?;
+        if let Some(screen) = fallback_monitor(&window, &screens) {
+            fit_bounds(&window, None, &screen, false)?;
+        }
+        let mut memory = state.memory.lock().unwrap_or_else(|error| error.into_inner());
+        memory.saved = SavedState::default();
+        memory.pending_maximized = false;
+        Ok(())
+    })();
+    state.adjusting.store(false, Ordering::Release);
+    result.map_err(|error| error.to_string())?;
+    save(&window);
     Ok(())
 }
 

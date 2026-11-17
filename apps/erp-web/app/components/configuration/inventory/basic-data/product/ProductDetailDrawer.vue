@@ -9,6 +9,7 @@
             <header class="product-detail-header">
                 <div class="product-detail-title-actions">
                     <h2>全部信息</h2>
+                    <DesktopBusinessOpenButton kind="product" :record-id="product.backendId || ''" />
                 </div>
                 <button class="dialog-close" type="button" @click="emit('close')">
                     <Icon name="lucide:x" />
@@ -75,6 +76,7 @@
 
         <ProductBarcodePrintDialog
             v-if="showBarcodePrintDialog"
+            :product-id="product.backendId || ''"
             :product-model="product.model || '--'"
             :product-code="product.id || ''"
             @close="showBarcodePrintDialog = false"

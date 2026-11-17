@@ -1,6 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod desktop_lifecycle;
+mod desktop_business_windows;
+mod desktop_downloads;
+mod desktop_print;
+mod desktop_print_native;
 #[cfg(target_os = "windows")]
 mod desktop_notification_popup;
 mod desktop_notifications;
@@ -143,10 +147,47 @@ fn main() {
         builder
     };
     let app = builder
+        .manage(desktop_downloads::DesktopDownloads::default())
+        .manage(desktop_print::DesktopPrintState::default())
         .invoke_handler(tauri::generate_handler![
             transport::desktop_info,
             desktop_lifecycle::desktop_about_ready,
             desktop_lifecycle::desktop_quick_launch_ready,
+            desktop_lifecycle::desktop_panel_ready,
+            desktop_lifecycle::desktop_open_panel,
+            desktop_lifecycle::desktop_autostart_state,
+            desktop_lifecycle::set_desktop_autostart,
+            desktop_window_state::reset_desktop_window_layout,
+            desktop_business_windows::desktop_business_context,
+            desktop_business_windows::sync_desktop_business_session,
+            desktop_business_windows::open_desktop_business_window,
+            desktop_business_windows::list_desktop_business_windows,
+            desktop_business_windows::update_desktop_business_window,
+            desktop_business_windows::desktop_business_snapshot,
+            desktop_business_windows::refresh_desktop_business_window,
+            desktop_downloads::sync_download_account,
+            desktop_downloads::prepare_local_download,
+            desktop_downloads::fail_local_download,
+            desktop_downloads::download_remote_file,
+            desktop_downloads::save_download_file,
+            desktop_downloads::retry_download_task,
+            desktop_downloads::cancel_download_task,
+            desktop_downloads::open_download_task,
+            desktop_downloads::clear_download_history,
+            desktop_downloads::set_download_directory,
+            desktop_print::desktop_print_bind_session,
+            desktop_print::desktop_print_printers,
+            desktop_print::desktop_print_list,
+            desktop_print::desktop_print_prepare,
+            desktop_print::desktop_print_preview,
+            desktop_print::desktop_print_submit,
+            desktop_print::desktop_print_cancel,
+            desktop_print::desktop_print_reprint,
+            desktop_print::desktop_print_registration,
+            desktop_print::desktop_print_settings,
+            desktop_print::desktop_print_image,
+            desktop_print::desktop_print_payload,
+            desktop_print::desktop_print_ready,
             desktop_updates::check_desktop_update,
             desktop_updates::install_desktop_update,
             transport::erp_request,
@@ -186,6 +227,7 @@ fn main() {
         .setup(move |app| {
             app.manage(transport::Transport::new()?);
             desktop_window_state::init(app.handle());
+            desktop_business_windows::init(app.handle());
             desktop_notifications::start(app.handle());
             let app_handle = app.handle().clone();
             let image_sources = format!("{} {}", transport::IMAGE_ORIGIN, transport::ERP_ORIGIN);
@@ -201,6 +243,10 @@ fn main() {
                     if payload.event() == PageLoadEvent::Started {
                         desktop_lifecycle::reset_about_ready(window.app_handle());
                         desktop_lifecycle::reset_quick_launch_ready(window.app_handle());
+                        desktop_lifecycle::reset_panels_ready(window.app_handle());
+                        desktop_business_windows::reset(window.app_handle());
+                        desktop_print::reset(window.app_handle());
+                        window.app_handle().state::<desktop_downloads::DesktopDownloads>().reset(window.app_handle());
                     }
                 })
                 .on_web_resource_request(move |_, response| {
@@ -254,6 +300,9 @@ fn main() {
 
     app.run(|app, event| {
         if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+            desktop_business_windows::reset(app);
+            desktop_print::reset(app);
+            app.state::<desktop_downloads::DesktopDownloads>().reset(app);
             if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
                 desktop_window_state::save(&window);
             }

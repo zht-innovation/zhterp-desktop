@@ -1,10 +1,15 @@
 import { clearAdminSession, getToken } from "~/utils/auth";
-import { desktopFetch, getDesktopErpOrigin, initializeDesktop } from "~/utils/desktop";
+import { desktopFetch, getDesktopErpOrigin, initializeDesktop, isDesktop } from "~/utils/desktop";
+import type { NuxtApp } from "#app";
 
-export default defineNuxtPlugin(async (nuxtApp) => {
+async function setupFetchLoading(nuxtApp: NuxtApp) {
     const { startLoading, stopLoading, setSlow, state } = useGlobalLoading()
     const router = useRouter()
-    const desktop = useRuntimeConfig().public.erpDesktop === true
+    const config = useRuntimeConfig()
+    const desktop = config.public.erpDesktop === true && isDesktop()
+    // Normalize before other plugins/components read this flag. Desktop assets
+    // opened in a browser must use the same branches as the ordinary web app.
+    if (config.public.erpDesktop === true && !desktop) config.public.erpDesktop = false
     if (desktop) {
         const connectionMessage = useState("erp-desktop-connection", () => "")
         await initializeDesktop(message => { connectionMessage.value = message })
@@ -77,4 +82,11 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
     // Replace global $fetch so existing calls are covered
     ;(globalThis as any).$fetch = wrapped
+}
+
+export default defineNuxtPlugin({
+    name: "erp-fetch-loading",
+    enforce: "pre",
+    dependsOn: ["nuxt:router"],
+    setup: setupFetchLoading,
 })

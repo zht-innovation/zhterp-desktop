@@ -136,6 +136,7 @@ export type SalesOrderReceiptRetrieveParams = {
 }
 
 export type SalesOrderRetrieveParams = {
+    id?: string
     keyword?: string
     orderNo?: string
     customerId?: string

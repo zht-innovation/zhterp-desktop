@@ -488,6 +488,7 @@ export const updateInventoryProduct = (
 export const updateInventoryProductSnPrintState = (payload: {
     id: string;
     monthKey: string;
+    firstSerial?: number;
     lastSerial: number;
 }) =>
     $fetch<InventoryApiResponse<{

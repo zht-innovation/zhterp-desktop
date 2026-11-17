@@ -98,6 +98,7 @@
                 </template>
                 <div v-else class="detail-state">暂无采购单详情</div>
                 <template #footer>
+                    <DesktopBusinessOpenButton v-if="order" kind="purchase" :record-id="String(order.id || order._id || '')" />
                     <button class="dialog-button cancel" type="button" @click="emit('close')">关闭</button>
                 </template>
             </ErpDialogFrame>

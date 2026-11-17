@@ -5,8 +5,14 @@
     </NuxtLayout>
 
     <SystemUpdateDialog />
-    <DesktopAboutDialog v-if="desktop" />
-    <DesktopQuickLaunch v-if="desktop" />
+    <template v-if="desktop && desktopReady">
+        <DesktopAboutDialog />
+        <DesktopQuickLaunch />
+        <DesktopDownloadCenter />
+        <DesktopPrintCenter />
+        <DesktopSettingsDialog />
+        <DesktopBusinessWindowsBridge />
+    </template>
 
     <div v-if="desktop && desktopConnection" class="desktop-connection" role="status">
         <span>{{ desktopConnection }}</span>
@@ -24,7 +30,7 @@
 
 <script setup lang="ts">
 import { getToken, verifyDesktopSession } from "~/utils/auth";
-import { getDesktopErpOrigin, initializeDesktop } from "~/utils/desktop";
+import { desktopReady, initializeDesktop, isDesktop } from "~/utils/desktop";
 import {
     PRIVATE_PAGE_ROBOTS_CONTENT,
     isPrivateAppRoute,
@@ -70,7 +76,7 @@ const remScript = `
 const route = useRoute();
 const router = useRouter();
 const nuxtApp = useNuxtApp();
-const desktop = useRuntimeConfig().public.erpDesktop === true;
+const desktop = useRuntimeConfig().public.erpDesktop === true && isDesktop();
 const desktopConnection = useState("erp-desktop-connection", () => "");
 const isReconnecting = ref(false);
 
@@ -78,9 +84,9 @@ async function checkDesktopConnection(probe: boolean) {
     if (isReconnecting.value) return;
     isReconnecting.value = true;
     try {
-        if (!getDesktopErpOrigin()) {
-            await initializeDesktop(message => { desktopConnection.value = message; });
-            if (!getDesktopErpOrigin()) return;
+        if (!desktopReady.value) {
+            const ready = await initializeDesktop(message => { desktopConnection.value = message; });
+            if (!ready) return;
         }
         const wasSignedIn = Boolean(nuxtApp.runWithContext(getToken));
         const restored = await nuxtApp.runWithContext(() => verifyDesktopSession(probe));
@@ -114,7 +120,7 @@ if (desktop) {
         window.addEventListener("resize", updateDesktopRem);
         window.addEventListener("pageshow", updateDesktopRem);
         window.addEventListener("offline", showDesktopOffline);
-        if (navigator.onLine && getDesktopErpOrigin()) void checkDesktopConnection(false);
+        if (navigator.onLine) void checkDesktopConnection(false);
     });
     onUnmounted(() => {
         window.removeEventListener("resize", updateDesktopRem);

@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:; font-src 'self' data:; connect-src ipc: https://ipc.localhost http://ipc.localhost; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'">
+    <title>打印预览</title>
+</head>
+<body>
+    <header id="status" role="status">正在准备打印页面…</header>
+    <main id="pages"></main>
+    <script type="module" src="./main.ts"></script>
+</body>
+</html>

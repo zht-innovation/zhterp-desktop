@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::collections::HashSet;
 use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -21,6 +22,9 @@ const AUTOSTART_MENU: &str = "erp-toggle-autostart";
 const ABOUT_MENU: &str = "erp-about";
 const ABOUT_EVENT: &str = "erp-open-about";
 const QUICK_LAUNCH_EVENT: &str = "erp-open-quick-launch";
+const DOWNLOAD_MENU: &str = "erp-download-center";
+const PRINT_MENU: &str = "erp-print-center";
+const SETTINGS_MENU: &str = "erp-desktop-settings";
 
 // A second launch may arrive before the main window has been created.
 static SHOW_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -30,6 +34,79 @@ struct DesktopMenu {
     shortcut_warning_pending: AtomicBool,
     about: Mutex<AboutMenu>,
     quick_launch: Mutex<QuickLaunchMenu>,
+    panels: Mutex<DesktopPanels>,
+}
+
+#[derive(Default)]
+struct DesktopPanels {
+    ready: HashSet<String>,
+    pending: HashSet<String>,
+}
+
+fn panel_event(panel: &str) -> Result<&'static str, String> {
+    match panel {
+        "downloads" => Ok("erp-open-download-center"),
+        "print" => Ok("erp-open-print-center"),
+        "settings" => Ok("erp-open-desktop-settings"),
+        _ => Err("Unknown desktop panel".into()),
+    }
+}
+
+fn require_main(window: &tauri::WebviewWindow) -> Result<(), String> {
+    if window.label() == crate::MAIN_WINDOW { Ok(()) } else { Err("Main window required".into()) }
+}
+
+#[tauri::command]
+pub(crate) fn desktop_panel_ready(window: tauri::WebviewWindow, panel: String) -> Result<bool, String> {
+    require_main(&window)?;
+    panel_event(&panel)?;
+    let menu = window.app_handle().state::<DesktopMenu>();
+    let mut panels = menu.panels.lock().map_err(|_| "Desktop menu unavailable")?;
+    panels.ready.insert(panel.clone());
+    Ok(panels.pending.remove(&panel))
+}
+
+#[tauri::command]
+pub(crate) fn desktop_open_panel(window: tauri::WebviewWindow, panel: String) -> Result<(), String> {
+    require_main(&window)?;
+    panel_event(&panel)?;
+    open_panel(window.app_handle(), &panel);
+    Ok(())
+}
+
+pub(crate) fn reset_panels_ready(app: &AppHandle) {
+    if let Ok(mut panels) = app.state::<DesktopMenu>().panels.lock() { panels.ready.clear(); }
+}
+
+fn open_panel(app: &AppHandle, panel: &str) {
+    let Ok(event) = panel_event(panel) else { return };
+    show_main(app);
+    let menu = app.state::<DesktopMenu>();
+    if let Ok(mut panels) = menu.panels.lock() {
+        if !panels.ready.contains(panel)
+            || app.emit_to(EventTarget::webview_window(crate::MAIN_WINDOW), event, ()).is_err() {
+            panels.pending.insert(panel.to_owned());
+        }
+    };
+}
+
+#[tauri::command]
+pub(crate) fn desktop_autostart_state(window: tauri::WebviewWindow) -> Result<bool, String> {
+    require_main(&window)?;
+    window.app_handle().autolaunch().is_enabled().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub(crate) fn set_desktop_autostart(window: tauri::WebviewWindow, enabled: bool) -> Result<bool, String> {
+    require_main(&window)?;
+    let app = window.app_handle();
+    let manager = app.autolaunch();
+    let result = if enabled { manager.enable() } else { manager.disable() };
+    let actual = manager.is_enabled().map_err(|error| error.to_string())?;
+    let _ = app.state::<DesktopMenu>().autostart.set_checked(actual);
+    let _ = app.emit_to(EventTarget::webview_window(crate::MAIN_WINDOW), "erp-autostart-changed", actual);
+    result.map_err(|error| error.to_string())?;
+    Ok(actual)
 }
 
 #[derive(Default)]
@@ -48,6 +125,9 @@ pub(crate) fn append_app_menu(app: &AppHandle, menu: &Menu<Wry>) -> tauri::Resul
     let open = MenuItem::with_id(app, OPEN_MENU, "打开 ERP", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, QUIT_MENU, "退出 ERP", true, None::<&str>)?;
     let about = MenuItem::with_id(app, ABOUT_MENU, "关于 ERP", true, None::<&str>)?;
+    let downloads = MenuItem::with_id(app, DOWNLOAD_MENU, "下载中心", true, None::<&str>)?;
+    let print = MenuItem::with_id(app, PRINT_MENU, "打印中心", true, None::<&str>)?;
+    let settings = MenuItem::with_id(app, SETTINGS_MENU, "桌面设置", true, None::<&str>)?;
     let autostart = CheckMenuItem::with_id(
         app,
         AUTOSTART_MENU,
@@ -56,12 +136,13 @@ pub(crate) fn append_app_menu(app: &AppHandle, menu: &Menu<Wry>) -> tauri::Resul
         false,
         None::<&str>,
     )?;
-    menu.append(&Submenu::with_items(app, "桌面", true, &[&open, &autostart, &about, &quit])?)?;
+    menu.append(&Submenu::with_items(app, "桌面", true, &[&open, &downloads, &print, &settings, &autostart, &about, &quit])?)?;
     app.manage(DesktopMenu {
         autostart,
         shortcut_warning_pending: AtomicBool::new(false),
         about: Mutex::default(),
         quick_launch: Mutex::default(),
+        panels: Mutex::default(),
     });
     Ok(())
 }
@@ -155,6 +236,9 @@ pub(crate) fn handle_menu(app: &AppHandle, id: &str) {
         AUTOSTART_MENU => toggle_autostart(app),
         ABOUT_MENU => open_about(app),
         QUICK_LAUNCH_MENU => open_quick_launch(app),
+        DOWNLOAD_MENU => open_panel(app, "downloads"),
+        PRINT_MENU => open_panel(app, "print"),
+        SETTINGS_MENU => open_panel(app, "settings"),
         _ => {}
     }
 }
@@ -228,6 +312,7 @@ fn toggle_autostart(app: &AppHandle) {
     });
     let enabled = manager.is_enabled().unwrap_or(false);
     let _ = app.state::<DesktopMenu>().autostart.set_checked(enabled);
+    let _ = app.emit_to(EventTarget::webview_window(crate::MAIN_WINDOW), "erp-autostart-changed", enabled);
     if let Err(error) = result {
         eprintln!("Failed to change ERP autostart setting: {error}");
         show_warning(app, "无法修改开机自启动设置，请检查操作系统的登录项设置后重试。");

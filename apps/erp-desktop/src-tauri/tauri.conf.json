@@ -19,7 +19,7 @@
         "windows": [],
         "withGlobalTauri": false,
         "security": {
-            "capabilities": ["erp-desktop-local"],
+            "capabilities": ["erp-desktop-local", "erp-desktop-business", "erp-desktop-print"],
             "csp": {
                 "default-src": "'self'",
                 "script-src": "'self'",

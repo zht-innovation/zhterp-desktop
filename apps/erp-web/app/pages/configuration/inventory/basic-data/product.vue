@@ -816,7 +816,13 @@
 
                     <div class="product-form-row image-row">
                         <span>产品图片<i>*</i></span>
-                        <div class="image-upload-field">
+                        <div class="image-upload-field"
+                            :tabindex="productImagePaste.available.value ? 0 : undefined"
+                            :aria-label="productImagePaste.hint.value"
+                            @pointerdown="productImagePaste.focusPasteArea"
+                            @paste="productImagePaste.handlePaste"
+                        >
+                            <img v-if="productPastePreview" :src="productPastePreview" class="pasted-product-preview" alt="待提交的产品图片">
                             <div v-if="productImageName" class="uploaded-image-attachment">
                                 <div class="uploaded-image-info">
                                     <Icon name="lucide:image" class="uploaded-image-icon" />
@@ -846,11 +852,12 @@
                                     type="file"
                                     accept="image/*"
                                     :disabled="isSubmitting"
-                                    @click="openDesktopFileInput($event, PRODUCT_IMAGE_MAX_SIZE_BYTES, setProductImageFiles)"
+                                    @click="selectProductImageFiles"
                                     @change="handleProductImageChange"
                                 >
                             </label>
                             <p>最小分辨率 {{ PRODUCT_IMAGE_MIN_DIMENSION }}×{{ PRODUCT_IMAGE_MIN_DIMENSION }} 像素</p>
+                            <p v-if="productImagePaste.available.value">{{ productImagePaste.hint.value }}</p>
                         </div>
                     </div>
 
@@ -956,6 +963,7 @@
 import { escapeHtml } from "~/utils/highlightText";
 import { resolveErpImageUrl } from "~/utils/attachmentPreview";
 import { downloadBlob, downloadWorkbook, openDesktopFileInput } from "~/utils/fileActions";
+import { useDesktopImagePaste } from "~/composables/useDesktopImagePaste";
 import type {
     InventoryCategory,
     InventoryLocation,
@@ -1353,7 +1361,33 @@ const sourceSelectOptions = sourceOptions.map((source) => ({
 const activeDraftCategoryGroup = ref("");
 const activeProductCategoryGroup = ref("");
 const PRODUCT_IMAGE_MAX_SIZE_MB = 10;
-const PRODUCT_IMAGE_MAX_SIZE_BYTES = PRODUCT_IMAGE_MAX_SIZE_MB * 2048 * 2048;
+const PRODUCT_IMAGE_MAX_SIZE_BYTES = PRODUCT_IMAGE_MAX_SIZE_MB * 1024 * 1024;
+const productPastePreview = ref("");
+const productImagePaste = useDesktopImagePaste({
+    enabled: () => showProductDialog.value && !isSubmitting.value,
+    onFiles: (files) => setProductImageFiles(files.slice(0, 1)),
+    onSessionChange: () => {
+        invalidateProductImageValidation();
+        productImageFile.value = null;
+        productImageName.value = "";
+        newProductForm.image = "";
+        showProductDialog.value = false;
+        isSubmitting.value = false;
+    },
+});
+watch(productImageFile, (file) => {
+    if (productPastePreview.value) URL.revokeObjectURL(productPastePreview.value);
+    productPastePreview.value = file ? URL.createObjectURL(file) : "";
+}, { flush: "sync" });
+onBeforeUnmount(() => {
+    if (productPastePreview.value) URL.revokeObjectURL(productPastePreview.value);
+});
+const selectProductImageFiles = (event: MouseEvent) => {
+    const isCurrentSession = productImagePaste.captureSession();
+    openDesktopFileInput(event, PRODUCT_IMAGE_MAX_SIZE_BYTES, files => {
+        if (isCurrentSession()) void setProductImageFiles(files);
+    });
+};
 const PRODUCT_COLUMN_WIDTH_STORAGE_KEY = "inventory.product.columnWidths";
 const PRODUCT_COLUMN_CONFIG_STORAGE_KEY = "inventory.product.columnConfigs";
 const PRODUCT_COLUMN_MIN_WIDTH = 60;
@@ -2338,6 +2372,7 @@ const openEditProductDialog = (product: ProductItem) => {
 };
 
 const closeProductDialog = () => {
+    if (isSubmitting.value) return;
     invalidateProductImageValidation();
     showProductDialog.value = false;
     showProductDrafts.value = false;
@@ -2566,10 +2601,11 @@ const confirmProductDialog = async () => {
 
     normalizeProductDecimalFields();
 
+    const isCurrentSession = productImagePaste.captureSession();
+    const validationId = productImageValidationId;
     isSubmitting.value = true;
     try {
         const imageFile = productImageFile.value;
-        const validationId = productImageValidationId;
         if (imageFile) {
             const validationError = await validateProductImageResolution(imageFile);
             if (validationId !== productImageValidationId || !showProductDialog.value) {
@@ -2582,6 +2618,7 @@ const confirmProductDialog = async () => {
         }
 
         const imageResult = await resolveProductImageUpload(imageFile, uploadImage);
+        if (!isCurrentSession() || validationId !== productImageValidationId || !showProductDialog.value) return;
         if (imageResult.failed) {
             ElMessage.warning("产品图片上传失败，已继续保存产品，可后续编辑补传图片");
         }
@@ -2593,18 +2630,20 @@ const confirmProductDialog = async () => {
                 imageFile ? buildUpdateProductFormData(image) : buildUpdateProductPayload(),
             );
 
+        if (!isCurrentSession() || validationId !== productImageValidationId || !showProductDialog.value) return;
         if (res.code !== 200) {
             ElMessage.error(res.msg || `${productDialogTitle.value}失败`);
             return;
         }
 
         ElMessage.success(`${productDialogTitle.value}成功`);
+        isSubmitting.value = false;
         closeProductDialog();
         await loadProducts(productDialogMode.value === "create");
     } catch (err: any) {
-        handleApiError(err, `${productDialogTitle.value}失败`);
+        if (isCurrentSession() && validationId === productImageValidationId) handleApiError(err, `${productDialogTitle.value}失败`);
     } finally {
-        isSubmitting.value = false;
+        if (isCurrentSession() && validationId === productImageValidationId) isSubmitting.value = false;
     }
 };
 
@@ -3257,6 +3296,8 @@ watch(pageSize, () => {
 </script>
 
 <style scoped>
+.pasted-product-preview { max-width: 180px; max-height: 120px; object-fit: contain; }
+.image-upload-field:focus-visible { outline: 2px solid #4e8af4; outline-offset: 3px; }
 .product-page {
     --product-selection-width: 58px;
     --product-action-width: var(--erp-table-col-action);

@@ -1,6 +1,6 @@
-import { getToken } from "~/utils/auth";
-import { desktopFetch, getDesktopErpOrigin, isDesktop } from "~/utils/desktop";
+import { getDesktopErpOrigin, isDesktop } from "~/utils/desktop";
 import { downloadBlob } from "~/utils/fileActions";
+import { downloadDesktopAttachment } from "~/utils/desktopDownloads";
 
 export type AttachmentPreviewSource =
     | string
@@ -83,10 +83,7 @@ export const downloadAttachmentFile = async (url: string, filename?: string) => 
     const sameOrigin = attachmentUrl.origin === (desktopOrigin || window.location.origin);
 
     if (desktopOrigin && sameOrigin) {
-        const token = attachmentUrl.pathname.startsWith("/main/") ? "" : getToken();
-        const response = await desktopFetch(attachmentUrl, { headers: token ? { Token: token } : undefined });
-        if (!response.ok) throw new Error("下载失败");
-        await downloadBlob(await response.blob(), filename || getAttachmentFileName(url));
+        await downloadDesktopAttachment(attachmentUrl.pathname + attachmentUrl.search, filename || getAttachmentFileName(attachmentUrl.pathname));
         return;
     }
 

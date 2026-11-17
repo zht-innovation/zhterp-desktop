@@ -9,6 +9,7 @@ export default defineEventHandler(async (event) => {
             toText(body?.id || body?._id),
             {
                 monthKey: body?.monthKey,
+                firstSerial: body?.firstSerial,
                 lastSerial: body?.lastSerial,
             },
             getInventoryActor(event),

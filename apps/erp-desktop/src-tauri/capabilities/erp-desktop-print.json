@@ -1,0 +1,19 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "erp-desktop-print",
+    "description": "Only read the owning print job and report rendering readiness.",
+    "windows": [
+        "print-*"
+    ],
+    "local": true,
+    "platforms": [
+        "windows",
+        "macOS"
+    ],
+    "permissions": [
+        "allow-desktop-print-payload",
+        "allow-desktop-print-ready",
+        "core:event:allow-listen",
+        "core:event:allow-unlisten"
+    ]
+}

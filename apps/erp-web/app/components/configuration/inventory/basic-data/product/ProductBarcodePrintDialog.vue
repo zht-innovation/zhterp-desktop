@@ -38,8 +38,11 @@
 <script setup lang="ts">
 import JsBarcode from "jsbarcode";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
+import { isDesktop } from "~/utils/desktop";
+import { buildDesktopLabels, openDesktopPrint } from "~/utils/desktopPrint";
 
 const props = defineProps<{
+    productId: string;
     productModel: string;
     productCode: string;
 }>();
@@ -81,6 +84,16 @@ const printBarcode = () => {
         return;
     }
 
+    if (isDesktop()) {
+        try {
+            const code = props.productCode.trim();
+            const model = props.productModel;
+            if (!props.productId) throw new Error("缺少产品 ID，无法校验打印权限");
+            openDesktopPrint({ kind: "sku", title: `SKU 标签 · ${code}`, sourceIds: [props.productId],
+                buildPages: (settings) => buildDesktopLabels(model, [code], settings) });
+        } catch (error) { ElMessage.error(error instanceof Error ? error.message : String(error)); }
+        return;
+    }
     window.print();
 };
 

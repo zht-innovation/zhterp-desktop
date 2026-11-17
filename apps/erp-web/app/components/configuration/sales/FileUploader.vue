@@ -2,6 +2,12 @@
     <div 
         class="file-uploader"
         :class="{ 'is-dragover': isDragover, 'is-button': variant === 'button' }"
+        :tabindex="imagePaste.available.value ? 0 : undefined"
+        :aria-label="imagePaste.available.value ? imagePaste.hint.value : undefined"
+        @pointerdown="imagePaste.focusPasteArea"
+        @paste="imagePaste.handlePaste"
+        @keydown.enter.self.prevent="triggerFileInput"
+        @keydown.space.self.prevent="triggerFileInput"
         @click.stop
         @dragover.prevent="handleDragover"
         @dragleave.prevent="handleDragleave"
@@ -20,9 +26,10 @@
             :multiple="multiple"
             :accept="accept"
             class="file-input-hidden"
-            @click.stop="openDesktopFileInput($event, maxSize * 1024 * 1024, addFiles)"
+            @click.stop="selectDesktopFiles"
             @change="handleFileSelect"
         />
+        <small v-if="imagePaste.available.value" class="paste-hint">{{ imagePaste.hint.value }}</small>
         <div class="file-list" v-if="files.length > 0">
             <div class="file-item" v-for="(file, index) in files" :key="index">
                 <Icon name="heroicons:document" class="file-icon" />
@@ -74,6 +81,7 @@
 import AttachmentImagePreview from '~/components/configuration/sales/AttachmentImagePreview.vue'
 import { isDesktop } from '~/utils/desktop'
 import { downloadBlob, openDesktopFileInput } from '~/utils/fileActions'
+import { useDesktopImagePaste, matchesUploadAccept } from '~/composables/useDesktopImagePaste'
 import {
     getAttachmentFileName,
     getAttachmentPath,
@@ -128,6 +136,24 @@ const files = computed({
     set: (val) => emit('update:modelValue', val)
 })
 
+const imagePaste = useDesktopImagePaste({
+    enabled: () => !props.readonly,
+    onFiles: (newFiles) => addFiles(newFiles),
+    onSessionChange: () => {
+        showPreview.value = false
+        clearPreviewUrl()
+        isDragover.value = false
+        files.value = files.value.filter(file => !(file instanceof File))
+    },
+})
+
+const selectDesktopFiles = (event: MouseEvent) => {
+    const isCurrentSession = imagePaste.captureSession()
+    openDesktopFileInput(event, props.maxSize * 1024 * 1024, (newFiles) => {
+        if (isCurrentSession()) addFiles(newFiles)
+    })
+}
+
 const triggerFileInput = () => {
     if (props.readonly) return
     fileInputRef.value?.click()
@@ -157,11 +183,12 @@ const handleFileSelect = (e: Event) => {
 }
 
 const addFiles = (newFiles: File[]) => {
+    if (props.readonly) return
     let validFiles = newFiles.filter(file => {
-        if (props.accept === "image/*" && !file.type.startsWith("image/")) {
+        if (!matchesUploadAccept(file, props.accept)) {
             ElMessage({
                 type: "warning",
-                message: `文件 ${file.name} 不是有效图片`,
+                message: `文件 ${file.name} 不符合允许的文件类型`,
                 customClass: "file-uploader-message",
             })
             return false
@@ -190,12 +217,13 @@ const addFiles = (newFiles: File[]) => {
             }
         }
         files.value = [...files.value, ...validFiles]
-    } else {
+    } else if (validFiles.length && props.maxFiles !== 0) {
         files.value = validFiles.slice(0, 1)
     }
 }
 
 const removeFile = (index: number) => {
+    if (props.readonly) return
     const newFiles = [...files.value]
     newFiles.splice(index, 1)
     files.value = newFiles
@@ -293,6 +321,17 @@ const formatFileSize = (bytes?: number) => {
 
 .file-uploader {
     width: 100%;
+    &:focus-visible {
+        outline: 2px solid #4E8AF4;
+        outline-offset: 3px;
+    }
+}
+
+.paste-hint {
+    display: block;
+    margin-top: 6px;
+    color: #6b7280;
+    font-size: 12px;
 }
 
 .upload-area {

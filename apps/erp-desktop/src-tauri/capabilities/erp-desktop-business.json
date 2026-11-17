@@ -1,0 +1,19 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "erp-desktop-business",
+    "description": "Read only snapshots for isolated business windows.",
+    "windows": [
+        "erp-detail-*"
+    ],
+    "local": true,
+    "platforms": [
+        "windows",
+        "macOS"
+    ],
+    "permissions": [
+        "allow-desktop-business-snapshot",
+        "allow-refresh-desktop-business-window",
+        "core:event:allow-listen",
+        "core:event:allow-unlisten"
+    ]
+}

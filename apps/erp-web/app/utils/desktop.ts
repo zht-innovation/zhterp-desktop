@@ -1,4 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { readonly, ref } from "vue";
+import { saveDesktopDownload } from "~/utils/desktopDownloads";
 
 type DesktopFetchOptions = RequestInit & { timeout?: number };
 
@@ -9,22 +11,40 @@ type DesktopResponse = {
 };
 
 const productImageEndpoint = "https://server.zhtaero.com/image/upload";
-let desktopActive = false;
+const desktopActive = ref(false);
+let initialization: Promise<boolean> | null = null;
 let erpOrigin = "";
 let reportConnection: (message: string) => void = () => {};
 
-export const isDesktop = () => desktopActive;
+// Environment and readiness are separate: a disconnected desktop must keep
+// using desktop credentials and transport instead of falling back to cookies.
+export const isDesktop = () => typeof window !== "undefined" && isTauri();
+export const desktopReady = readonly(desktopActive);
 export const getDesktopErpOrigin = () => erpOrigin;
 
-export async function initializeDesktop(report: (message: string) => void) {
-    desktopActive = true;
+export async function initializeDesktop(report: (message: string) => void): Promise<boolean> {
     reportConnection = report;
+    if (!isDesktop()) return false;
+    if (desktopActive.value) return true;
+    if (!initialization) {
+        initialization = loadDesktopInfo().finally(() => { initialization = null; });
+    }
+    return initialization;
+}
+
+async function loadDesktopInfo(): Promise<boolean> {
     try {
         const info = await invoke<{ erpOrigin: string }>("desktop_info");
+        if (!info.erpOrigin) throw new Error("桌面服务地址不可用");
         erpOrigin = info.erpOrigin;
-        if (!navigator.onLine) reportConnection("网络不可用，请检查连接后重试。");
+        desktopActive.value = true;
+        reportConnection(navigator.onLine ? "" : "网络不可用，请检查连接后重试。");
+        return true;
     } catch {
+        desktopActive.value = false;
+        erpOrigin = "";
         reportConnection("桌面接口初始化失败，请重试。");
+        return false;
     }
 }
 
@@ -143,7 +163,5 @@ function fileType(name: string) {
 }
 
 export async function saveDesktopFile(blob: Blob, filename: string): Promise<boolean> {
-    const name = filename.split(/[/\\]/).pop() || "下载文件";
-    const body = encodeBytes(await blob.arrayBuffer());
-    return invoke<boolean>("save_local_file", { name, body });
+    return saveDesktopDownload(blob, filename);
 }

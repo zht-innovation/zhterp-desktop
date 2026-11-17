@@ -347,6 +347,7 @@
                 </div>
 
                 <template #footer>
+                    <DesktopBusinessOpenButton v-if="isViewMode" kind="sales" :record-id="String(props.order?._id || props.order?.id || '')" />
                     <button class="dialog-button cancel" type="button" :disabled="submitting" @click="closeDialog">{{ isViewMode ? '关闭' : '取消' }}</button>
                     <button
                         v-if="canSaveDraft"

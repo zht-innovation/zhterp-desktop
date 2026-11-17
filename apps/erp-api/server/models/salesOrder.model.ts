@@ -155,6 +155,7 @@ const isOrderUnlockedStatus = (status: unknown) =>
     ["草稿", "已驳回"].includes(toText(status));
 
 type SalesOrderListOptions = {
+    id?: string;
     keyword?: string;
     orderNo?: string;
     customerId?: string;
@@ -1481,6 +1482,14 @@ class SalesOrderModel {
             : isApprovalQuery || options.includeDeleted
                 ? {}
                 : { _isDeleted: { $ne: true } };
+
+        // A single-record read is still constrained by every existing list
+        // permission below (owner, salesperson, draft and approval filters).
+        if (options.id) {
+            const id = toObjectId(options.id);
+            if (!id) throw new Error("订单编号不合法");
+            filter._id = id;
+        }
 
         if (isApprovalQuery && approvalAuditorId) {
             filter.$and = [

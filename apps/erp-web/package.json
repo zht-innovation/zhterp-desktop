@@ -5,8 +5,12 @@
     "scripts": {
         "dev": "nuxt dev",
         "build": "nuxt build",
-        "build:desktop": "nuxt generate --envName desktop",
+        "build:desktop": "nuxt generate --envName desktop && vite build --config vite.desktop-windows.config.ts",
         "preview": "nuxt preview"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "6.0.10",
+        "vite": "8.3.6"
     },
     "dependencies": {
         "@element-plus/icons-vue": "2.3.2",

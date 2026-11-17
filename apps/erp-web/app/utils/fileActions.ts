@@ -1,6 +1,7 @@
 import { ElMessage } from "element-plus";
 import type { WorkBook } from "xlsx";
 import { isDesktop, openDesktopFiles, saveDesktopFile } from "~/utils/desktop";
+import { generateDesktopDownload } from "~/utils/desktopDownloads";
 
 export const MAX_DESKTOP_OPEN_BYTES = 64 * 1024 * 1024;
 
@@ -43,15 +44,18 @@ export async function downloadBlob(blob: Blob, filename: string) {
 }
 
 export async function downloadWorkbook(workbook: WorkBook, filename: string) {
-    const XLSX = await import("xlsx");
     if (!isDesktop()) {
+        const XLSX = await import("xlsx");
         XLSX.writeFile(workbook, filename);
         return;
     }
 
     try {
-        const data = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-        await downloadBlob(new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), filename);
+        await generateDesktopDownload(filename, async () => {
+            const XLSX = await import("xlsx");
+            const data = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+            return new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        });
     } catch {
         ElMessage.error("保存 Excel 文件失败");
     }

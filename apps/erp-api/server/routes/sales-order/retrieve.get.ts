@@ -38,6 +38,11 @@ export default defineEventHandler(async (event) => {
         const query = getQuery(event);
         const auth = event.context.auth;
         const access = await getSalesOrderAccess(auth);
+        const id = toSalesOrderText(query.id);
+        if (query.id !== undefined && !/^[a-f\d]{24}$/i.test(id)) {
+            setResponseStatus(event, 400);
+            return { code: 400, msg: "订单编号不合法", data: null };
+        }
         if (query.view === "production-overview" || query.view === "production-execution") {
             const data = await retrieveSalesProductionReadonly(query, access);
             return { code: CODE.SUCCESS, msg: codeToMsg[CODE.SUCCESS], data };
@@ -102,6 +107,7 @@ export default defineEventHandler(async (event) => {
         }
 
         const result = await orderModel.retrieve({
+            id,
             keyword: toSalesOrderText(query.keyword),
             orderNo: toSalesOrderText(query.orderNo),
             customerId: toSalesOrderText(query.customerId),

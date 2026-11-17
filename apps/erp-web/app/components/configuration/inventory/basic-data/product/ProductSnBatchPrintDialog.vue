@@ -1,9 +1,9 @@
 <template>
-    <div class="erp-dialog-mask sn-print-mask" role="presentation" @click.self="emit('close')">
+    <div class="erp-dialog-mask sn-print-mask" role="presentation" @click.self="closeDialog">
         <ErpDialogFrame
             class="sn-print-dialog"
             title="批量打印SN码"
-            @close="emit('close')"
+            @close="closeDialog"
         >
             <div class="sn-print-body">
                 <div class="sn-print-form">
@@ -13,7 +13,7 @@
                     </label>
                     <label class="sn-form-field">
                         <span>SN首段</span>
-                        <select v-model="selectedSnPrefix">
+                        <select v-model="selectedSnPrefix" :disabled="isRecordingPrint || Boolean(webBatch)">
                             <option :value="cleanProductCode">SKU：{{ cleanProductCode || '--' }}</option>
                             <option
                                 v-for="prefix in normalizedSnPrefixes"
@@ -32,6 +32,7 @@
                         <span>打印数量</span>
                         <input
                             v-model.number="quantity"
+                            :disabled="isRecordingPrint || Boolean(webBatch)"
                             type="number"
                             min="1"
                             step="1"
@@ -42,6 +43,7 @@
                         <span>起始流水号</span>
                         <input
                             v-model="startSerial"
+                            :disabled="isRecordingPrint || Boolean(webBatch)"
                             type="text"
                             inputmode="numeric"
                             @blur="normalizeStartSerial"
@@ -53,6 +55,7 @@
                         <div class="sn-size-input">
                             <input
                                 v-model.number="labelWidthMm"
+                                :disabled="isRecordingPrint || Boolean(webBatch)"
                                 type="number"
                                 min="10"
                                 step="1"
@@ -66,6 +69,7 @@
                         <div class="sn-size-input">
                             <input
                                 v-model.number="labelHeightMm"
+                                :disabled="isRecordingPrint || Boolean(webBatch)"
                                 type="number"
                                 min="10"
                                 step="1"
@@ -78,12 +82,12 @@
 
                 <div class="sn-label-preview-list">
                     <div
-                        v-for="(snCode, index) in snCodes"
+                        v-for="(snCode, index) in displayedCodes"
                         :key="snCode"
                         class="sn-label"
                         :style="labelStyle"
                     >
-                        <div class="sn-product-model">{{ productModel || productCode || '--' }}</div>
+                        <div class="sn-product-model">{{ webBatch?.model || productModel || productCode || '--' }}</div>
                         <svg
                             :ref="(el) => setBarcodeSvgRef(el, index)"
                             class="sn-barcode-svg"
@@ -93,12 +97,13 @@
                     </div>
                 </div>
 
-                <p v-if="validationMessage" class="sn-print-error">{{ validationMessage }}</p>
+                <p v-if="webBatch" class="sn-print-hint">正在处理本批标签，请等待打印结束；已登记的流水号不会回退。</p>
+                <p v-else-if="validationMessage" class="sn-print-error">{{ validationMessage }}</p>
                 <p v-else-if="renderError" class="sn-print-error">部分SN码生成失败。</p>
             </div>
 
             <template #footer>
-                <button class="dialog-button cancel" type="button" @click="emit('close')">
+                <button class="dialog-button cancel" type="button" :disabled="isRecordingPrint || Boolean(webBatch)" @click="closeDialog">
                     取消
                 </button>
                 <button
@@ -119,6 +124,9 @@ import type { ComponentPublicInstance } from "vue";
 import JsBarcode from "jsbarcode";
 import ErpDialogFrame from "~/components/configuration/ErpDialogFrame.vue";
 import { updateInventoryProductSnPrintState } from "~/composables/api/useInventoryApi";
+import { isDesktop } from "~/utils/desktop";
+import { buildDesktopLabels, openDesktopPrint, DesktopPrintRegistrationRejected } from "~/utils/desktopPrint";
+import { getToken } from "~/utils/auth";
 
 interface SnPrintState {
     monthKey: string;
@@ -149,7 +157,25 @@ const labelWidthMm = ref(50);
 const labelHeightMm = ref(30);
 const renderError = ref(false);
 const isRecordingPrint = ref(false);
+const webBatch = ref<{ codes: string[]; model: string; width: number; height: number } | null>(null);
 const barcodeSvgRefs = ref<SVGSVGElement[]>([]);
+let componentAlive = true;
+let webPrintRequested = false;
+function closeDialog() {
+    if (!isRecordingPrint.value && !webBatch.value) emit("close");
+}
+function finishWebPrint() {
+    if (!webPrintRequested || !webBatch.value) return;
+    webPrintRequested = false;
+    webBatch.value = null;
+    syncStartSerialWithState();
+}
+onMounted(() => { window.addEventListener("afterprint", finishWebPrint); });
+onBeforeUnmount(() => {
+    componentAlive = false;
+    webPrintRequested = false;
+    window.removeEventListener("afterprint", finishWebPrint);
+});
 
 const formatLocalDate = (date: Date) => {
     const pad = (value: number) => String(value).padStart(2, "0");
@@ -223,8 +249,8 @@ const normalizedLabelHeightMm = computed(() => {
     return Number.isFinite(value) && value >= 10 ? value : 0;
 });
 const labelStyle = computed(() => ({
-    "--sn-label-width": `${normalizedLabelWidthMm.value || 50}mm`,
-    "--sn-label-height": `${normalizedLabelHeightMm.value || 30}mm`,
+    "--sn-label-width": `${webBatch.value?.width || normalizedLabelWidthMm.value || 50}mm`,
+    "--sn-label-height": `${webBatch.value?.height || normalizedLabelHeightMm.value || 30}mm`,
 }));
 
 const validationMessage = computed(() => {
@@ -232,12 +258,12 @@ const validationMessage = computed(() => {
         return "产品编号和SN前缀为空，无法生成SN码。";
     }
 
-    if (!normalizedQuantity.value) {
-        return "请输入大于0的打印数量。";
+    if (!Number.isSafeInteger(normalizedQuantity.value) || normalizedQuantity.value < 1 || normalizedQuantity.value > 2000) {
+        return "打印数量须为 1 至 2000。";
     }
 
-    if (!startSerialNumber.value) {
-        return "请输入大于0的起始流水号。";
+    if (!Number.isSafeInteger(startSerialNumber.value) || startSerialNumber.value < 1 || !Number.isSafeInteger(endSerialNumber.value)) {
+        return "请输入有效的起始流水号，批次末尾不能超出安全整数范围。";
     }
 
     if (startSerialNumber.value <= currentMonthLastSerial.value) {
@@ -262,11 +288,13 @@ const snCodes = computed(() => {
         return `${selectedSnPrefix.value}${dateText}${serial}`;
     });
 });
+const displayedCodes = computed(() => webBatch.value?.codes || snCodes.value);
 
 const canPrint = computed(() =>
     !validationMessage.value &&
     !renderError.value &&
     !isRecordingPrint.value &&
+    !webBatch.value &&
     snCodes.value.length > 0,
 );
 
@@ -298,12 +326,12 @@ const renderCodes = async () => {
 
     renderError.value = false;
 
-    if (validationMessage.value) {
+    if (!webBatch.value && validationMessage.value) {
         return;
     }
 
     try {
-        snCodes.value.forEach((value, index) => {
+        displayedCodes.value.forEach((value, index) => {
             const svg = barcodeSvgRefs.value[index];
 
             if (!svg) {
@@ -339,25 +367,84 @@ const printSnCodes = async () => {
         return;
     }
 
+    if (isDesktop()) {
+        // Freeze before any async registration or parent state update. The
+        // print center persists these exact codes and never registers a reprint.
+        const codes = [...snCodes.value];
+        const firstSerial = startSerialNumber.value;
+        const lastSerial = endSerialNumber.value;
+        const productId = props.productId;
+        const model = props.productModel || props.productCode;
+        const batchToken = getToken();
+        try {
+            openDesktopPrint({
+                kind: "sn", title: `SN 标签 · ${props.productCode} · ${codes.length} 张`, sourceIds: [productId],
+                preferredSize: { widthMm: normalizedLabelWidthMm.value, heightMm: normalizedLabelHeightMm.value },
+                snBatch: { monthKey, firstSerial, lastSerial, codes, registration: "pending" },
+                buildPages: (settings) => buildDesktopLabels(model, codes, settings),
+                register: async () => {
+                    if (!batchToken || getToken() !== batchToken) throw new Error("登录会话已变化，请取消旧批次");
+                    try {
+                        const response = await updateInventoryProductSnPrintState({ id: productId, monthKey, firstSerial, lastSerial });
+                        if (response.code !== 200) throw new DesktopPrintRegistrationRejected(response.msg || "服务器拒绝登记此 SN 批次");
+                        if (!response.data?.snPrintState) throw new Error("SN 登记响应缺少流水状态，需人工核查");
+                        if (componentAlive && getToken() === batchToken) emit("state-updated", response.data.snPrintState);
+                    } catch (error: any) {
+                        const status = Number(error?.statusCode || error?.status || error?.data?.code);
+                        if (status >= 400 && status < 500) throw new DesktopPrintRegistrationRejected(error?.data?.msg || "服务器拒绝登记此 SN 批次，请重新生成");
+                        throw error;
+                    }
+                },
+            });
+        } catch (error) { ElMessage.error(error instanceof Error ? error.message : String(error)); }
+        return;
+    }
+
+    const productId = props.productId;
+    const batchToken = getToken();
+    const firstSerial = startSerialNumber.value;
+    const lastSerial = endSerialNumber.value;
+    const stillCurrent = () => componentAlive && getToken() === batchToken && props.productId === productId;
+    webBatch.value = {
+        codes: [...snCodes.value], model: props.productModel || props.productCode,
+        width: normalizedLabelWidthMm.value, height: normalizedLabelHeightMm.value,
+    };
     isRecordingPrint.value = true;
     try {
         const res = await updateInventoryProductSnPrintState({
-            id: props.productId,
+            id: productId,
             monthKey,
-            lastSerial: endSerialNumber.value,
+            firstSerial,
+            lastSerial,
         });
+        if (!stillCurrent()) return;
 
         if (res.code !== 200 || !res.data?.snPrintState) {
+            webBatch.value = null;
             ElMessage.error(res.msg || "记录SN打印流水号失败");
             return;
         }
 
+        // Updating the parent advances its counter; keep the exact registered
+        // labels visible until afterprint, including browsers with async print().
         emit("state-updated", res.data.snPrintState);
+        await renderCodes();
+        if (!stillCurrent()) return;
+        if (renderError.value) throw new Error("SN 已登记，但标签生成失败；请核查本批流水，勿作为新批次重复登记。");
+        webPrintRequested = true;
         window.print();
     } catch (err: any) {
-        ElMessage.error(err?.data?.msg || err?.message || "记录SN打印流水号失败");
+        webPrintRequested = false;
+        if (stillCurrent()) {
+            webBatch.value = null;
+            ElMessage.error(err?.data?.msg || err?.message || "SN 登记结果待核查，请刷新流水状态后再生成批次");
+        }
     } finally {
         isRecordingPrint.value = false;
+        if (!stillCurrent()) {
+            webPrintRequested = false;
+            webBatch.value = null;
+        }
     }
 };
 
@@ -366,7 +453,7 @@ onBeforeUpdate(() => {
 });
 
 watch(
-    snCodes,
+    displayedCodes,
     renderCodes,
     { immediate: true },
 );
@@ -374,7 +461,7 @@ watch(
 watch(
     () => props.snPrintState,
     () => {
-        syncStartSerialWithState();
+        if (!webBatch.value) syncStartSerialWithState();
     },
     { immediate: true },
 );
@@ -547,6 +634,7 @@ watch(
     .sn-print-dialog :deep(.erp-dialog-frame__header),
     .sn-print-form,
     .sn-print-dialog :deep(.erp-dialog-frame__actions),
+    .sn-print-hint,
     .sn-print-error {
         display: none !important;
     }

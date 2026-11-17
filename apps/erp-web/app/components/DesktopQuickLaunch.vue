@@ -30,6 +30,9 @@
                     autocomplete="off"
                     spellcheck="false"
                     placeholder="搜索模块或菜单，例如：采购、库存、审批"
+                    @compositionstart="startComposition"
+                    @compositionend="endComposition"
+                    @blur="endComposition"
                     @keydown="handleSearchKeydown"
                 >
                 <kbd>{{ shortcutLabel }}</kbd>
@@ -133,7 +136,8 @@ async function focusSearchAfterTrap() {
 }
 
 function openQuickLaunch() {
-    if (disposed || visible.value || composing.value) return;
+    if (disposed || visible.value) return;
+    composing.value = false;
     open();
 }
 
@@ -146,7 +150,7 @@ function endComposition() {
 }
 
 function isComposing(event: KeyboardEvent) {
-    return composing.value || event.isComposing || event.keyCode === 229;
+    return event.isComposing || event.keyCode === 229;
 }
 
 function moveSelection(direction: number) {
@@ -175,7 +179,7 @@ async function toggleResultFavorite(id: string) {
 }
 
 function handleSearchKeydown(event: KeyboardEvent) {
-    if (isComposing(event)) return;
+    if (composing.value || isComposing(event)) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         event.stopPropagation();
@@ -243,8 +247,7 @@ watch([activeId, results], async () => {
 onMounted(async () => {
     isMac.value = /Mac/i.test(navigator.platform);
     window.addEventListener("keydown", handleWindowKeydown, true);
-    window.addEventListener("compositionstart", startComposition, true);
-    window.addEventListener("compositionend", endComposition, true);
+    window.addEventListener("blur", endComposition);
     try {
         const stop = await listen("erp-open-quick-launch", openQuickLaunch, {
             target: { kind: "WebviewWindow", label: "erp" },
@@ -264,8 +267,8 @@ onBeforeUnmount(() => {
     disposed = true;
     unlisten?.();
     window.removeEventListener("keydown", handleWindowKeydown, true);
-    window.removeEventListener("compositionstart", startComposition, true);
-    window.removeEventListener("compositionend", endComposition, true);
+    window.removeEventListener("blur", endComposition);
+    composing.value = false;
 });
 </script>
 

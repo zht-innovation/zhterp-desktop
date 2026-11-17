@@ -614,6 +614,10 @@
                             <label
                                 v-if="waybillDialogMode !== 'view'"
                                 class="upload-box"
+                                :tabindex="waybillImagePaste.available.value ? 0 : undefined"
+                                :aria-label="waybillImagePaste.hint.value"
+                                @pointerdown="waybillImagePaste.focusPasteArea"
+                                @paste="waybillImagePaste.handlePaste"
                                 @dragover.prevent
                                 @drop.prevent="handleImageDrop"
                             >
@@ -623,13 +627,16 @@
                                     accept="image/*"
                                     multiple
                                     aria-label="上传图片"
-                                    @click="openDesktopFileInput($event, MAX_DESKTOP_OPEN_BYTES, readImageFiles)"
+                                    :disabled="isSubmittingWaybill"
+                                    @click="selectWaybillFiles($event, readImageFiles)"
                                     @change="handleImageFileChange"
                                 >
                                 <Icon name="lucide:upload" class="upload-icon" />
                                 <span>您的文件拖拽到这里</span>
                             </label>
                             <p>单个文件不超过10MB，列表中展示第一张图片</p>
+                            <p v-if="waybillImagePaste.available.value">{{ waybillImagePaste.hint.value }}</p>
+                            <DesktopPastedImages v-model="pastedWaybillImages" :disabled="isSubmittingWaybill" />
                         </div>
                     </div>
 
@@ -650,6 +657,10 @@
                             <label
                                 v-if="waybillDialogMode !== 'view'"
                                 class="upload-box attachment"
+                                :tabindex="waybillAttachmentPaste.available.value ? 0 : undefined"
+                                :aria-label="waybillAttachmentPaste.hint.value"
+                                @pointerdown="waybillAttachmentPaste.focusPasteArea"
+                                @paste="waybillAttachmentPaste.handlePaste"
                                 @dragover.prevent
                                 @drop.prevent="handleAttachmentDrop"
                             >
@@ -658,13 +669,16 @@
                                     type="file"
                                     multiple
                                     aria-label="上传附件"
-                                    @click="openDesktopFileInput($event, MAX_DESKTOP_OPEN_BYTES, readAttachmentFiles)"
+                                    :disabled="isSubmittingWaybill"
+                                    @click="selectWaybillFiles($event, readAttachmentFiles)"
                                     @change="handleAttachmentFileChange"
                                 >
                                 <Icon name="lucide:upload" class="upload-icon" />
                                 <span>请将文件拖拽到这里或点击选择</span>
                             </label>
                             <p>单个文件不超过10MB</p>
+                            <p v-if="waybillAttachmentPaste.available.value">{{ waybillAttachmentPaste.hint.value }}</p>
+                            <DesktopPastedImages v-model="pastedWaybillAttachments" :disabled="isSubmittingWaybill" />
                         </div>
                     </div>
                 </div>
@@ -783,6 +797,10 @@
                                         v-if="!acceptanceReadonly"
                                         class="acceptance-upload-box"
                                         :class="{ disabled: isUploadingAcceptanceImages }"
+                                        :tabindex="acceptanceImagePaste.available.value ? 0 : undefined"
+                                        :aria-label="acceptanceImagePaste.hint.value"
+                                        @pointerdown="acceptanceImagePaste.focusPasteArea"
+                                        @paste="acceptanceImagePaste.handlePaste"
                                         @dragover.prevent
                                         @drop.prevent="handleAcceptanceImageDrop"
                                     >
@@ -800,6 +818,8 @@
                                     </label>
                                     <p v-if="acceptanceReadonly && !acceptanceImages.length">暂无验收图片</p>
                                     <p v-else-if="!acceptanceReadonly">验收时必传，单个文件不超过10MB</p>
+                                    <p v-if="acceptanceImagePaste.available.value">{{ acceptanceImagePaste.hint.value }}</p>
+                                    <DesktopPastedImages v-model="pastedAcceptanceImages" :disabled="isSubmittingAcceptance" />
                                 </div>
                             </div>
                         </div>
@@ -888,6 +908,10 @@
                                     v-if="!acceptanceReadonly"
                                     class="acceptance-upload-box"
                                     :class="{ disabled: isUploadingAcceptanceEvidence }"
+                                    :tabindex="acceptanceEvidencePaste.available.value ? 0 : undefined"
+                                    :aria-label="acceptanceEvidencePaste.hint.value"
+                                    @pointerdown="acceptanceEvidencePaste.focusPasteArea"
+                                    @paste="acceptanceEvidencePaste.handlePaste"
                                     @dragover.prevent
                                     @drop.prevent="handleAcceptanceEvidenceDrop"
                                 >
@@ -906,6 +930,8 @@
                                 </label>
                                 <p v-if="acceptanceReadonly && !acceptanceAttachments.length">暂无异常材料</p>
                                 <p v-else-if="!acceptanceReadonly">不合格数量大于0时必须上传异常材料，单个文件不超过10MB</p>
+                                <p v-if="acceptanceEvidencePaste.available.value">{{ acceptanceEvidencePaste.hint.value }}</p>
+                                <DesktopPastedImages v-model="pastedAcceptanceEvidence" :disabled="isSubmittingAcceptance" />
                             </div>
                         </div>
                     </div>
@@ -1038,6 +1064,7 @@
 
 <script setup lang="ts">
 import { downloadBlob, downloadWorkbook, MAX_DESKTOP_OPEN_BYTES, openDesktopFileInput } from "~/utils/fileActions";
+import { useDesktopImagePaste } from "~/composables/useDesktopImagePaste";
 import { ADMIN_ROLE } from "~~/shared/enums";
 import type { InventoryWaybill, InventoryWaybillAttachment } from "~~/shared/types/inventory";
 import type {
@@ -1342,6 +1369,105 @@ const acceptanceEvidenceInput = ref<HTMLInputElement | null>(null);
 const isUploadingAcceptanceEvidence = ref(false);
 const isUploadingAcceptanceImages = ref(false);
 const isSubmittingAcceptance = ref(false);
+const pastedWaybillImages = ref<File[]>([]);
+const pastedWaybillAttachments = ref<File[]>([]);
+const pastedAcceptanceImages = ref<File[]>([]);
+const pastedAcceptanceEvidence = ref<File[]>([]);
+let waybillUploadRevision = 0;
+let acceptanceUploadRevision = 0;
+const canPasteWaybill = () => showWaybillDialog.value && waybillDialogMode.value !== "view"
+    && !isReadonly.value && !isSubmittingWaybill.value;
+const canPasteAcceptance = () => showAcceptanceDialog.value && !acceptanceReadonly.value
+    && canAcceptLogistics.value && !isSubmittingAcceptance.value;
+const stagePastedImages = (files: File[], target: { value: File[] }) => {
+    let total = target.value.reduce((sum, file) => sum + file.size, 0);
+    const accepted: File[] = [];
+    for (const file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        if (file.size > 10 * 1024 * 1024) {
+            ElMessage.warning(`截图 ${file.name} 不能超过10MB`);
+            continue;
+        }
+        if (total + file.size > MAX_DESKTOP_OPEN_BYTES) {
+            ElMessage.warning("待提交截图总大小不能超过64MB");
+            break;
+        }
+        accepted.push(file);
+        total += file.size;
+    }
+    target.value = [...target.value, ...accepted];
+};
+const waybillImagePaste = useDesktopImagePaste({
+    enabled: canPasteWaybill,
+    onFiles: files => stagePastedImages(files, pastedWaybillImages),
+    onSessionChange: () => {
+        waybillUploadRevision += 1;
+        acceptanceUploadRevision += 1;
+        pastedWaybillImages.value = [];
+        pastedWaybillAttachments.value = [];
+        pastedAcceptanceImages.value = [];
+        pastedAcceptanceEvidence.value = [];
+        revokeImagePreviews();
+        uploadedImages.value = [];
+        uploadedAttachments.value = [];
+        acceptanceImages.value = [];
+        acceptanceAttachments.value = [];
+        showWaybillDialog.value = false;
+        showAcceptanceDialog.value = false;
+        loadingAcceptanceWaybillId.value = "";
+        warehouseOptions.value = [];
+        warehouseOptionsLoaded.value = false;
+        isSubmittingWaybill.value = false;
+        isSubmittingAcceptance.value = false;
+        isUploadingAcceptanceEvidence.value = false;
+        isUploadingAcceptanceImages.value = false;
+    },
+});
+const waybillAttachmentPaste = useDesktopImagePaste({
+    enabled: canPasteWaybill,
+    onFiles: files => stagePastedImages(files, pastedWaybillAttachments),
+    onSessionChange: () => {},
+});
+const acceptanceImagePaste = useDesktopImagePaste({
+    enabled: () => canPasteAcceptance() && !isUploadingAcceptanceImages.value,
+    onFiles: files => stagePastedImages(files, pastedAcceptanceImages),
+    onSessionChange: () => {},
+});
+const acceptanceEvidencePaste = useDesktopImagePaste({
+    enabled: () => canPasteAcceptance() && !isUploadingAcceptanceEvidence.value,
+    onFiles: files => stagePastedImages(files, pastedAcceptanceEvidence),
+    onSessionChange: () => {},
+});
+watch([showWaybillDialog, editingWaybillId, waybillDialogMode], () => {
+    waybillUploadRevision += 1;
+    pastedWaybillImages.value = [];
+    pastedWaybillAttachments.value = [];
+}, { flush: "sync" });
+watch([showAcceptanceDialog, activeLogisticsRecord], () => {
+    acceptanceUploadRevision += 1;
+    pastedAcceptanceImages.value = [];
+    pastedAcceptanceEvidence.value = [];
+}, { flush: "sync" });
+const captureUploadContext = (acceptance = false) => {
+    const isCurrentSession = waybillImagePaste.captureSession();
+    const revision = acceptance ? acceptanceUploadRevision : waybillUploadRevision;
+    return () => isCurrentSession() && (acceptance
+        ? revision === acceptanceUploadRevision && showAcceptanceDialog.value && !acceptanceReadonly.value && canAcceptLogistics.value
+        : revision === waybillUploadRevision && showWaybillDialog.value && waybillDialogMode.value !== "view" && !isReadonly.value);
+};
+const selectWaybillFiles = (event: MouseEvent, reader: (files: File[]) => Promise<boolean>) => {
+    const isCurrent = captureUploadContext();
+    openDesktopFileInput(event, 10 * 1024 * 1024, files => {
+        if (isCurrent()) void reader(files);
+    });
+};
+const uploadPastedImages = async (target: { value: File[] }, upload: (files: File[]) => Promise<boolean>, isCurrent: () => boolean) => {
+    while (target.value.length) {
+        if (!isCurrent() || !await upload([target.value[0]!]) || !isCurrent()) return false;
+        target.value = target.value.slice(1);
+    }
+    return isCurrent();
+};
 const warehouseOptionsLoaded = ref(false);
 const {
     pageSizeOptions,
@@ -1930,9 +2056,11 @@ const handleLogisticsError = (err: any, fallback: string) => {
 
 const loadWarehouseOptions = async () => {
     if (warehouseOptionsLoaded.value) return;
+    const isCurrentSession = waybillImagePaste.captureSession();
 
     try {
         const warehouseRes = await retrieveInventoryWarehouses();
+        if (!isCurrentSession()) return;
         const warehouses = Array.isArray(warehouseRes.data?.list) ? warehouseRes.data.list : [];
         const locationGroups = await Promise.all(warehouses.map(async (warehouse) => {
             if (!warehouse._id || warehouse.enableLocation !== true) return [];
@@ -1942,6 +2070,7 @@ const loadWarehouseOptions = async () => {
                 : [];
         }));
 
+        if (!isCurrentSession()) return;
         warehouseOptions.value = warehouses.map((warehouse, index) => ({
             id: warehouse._id || "",
             code: warehouse.code || "",
@@ -1951,6 +2080,7 @@ const loadWarehouseOptions = async () => {
         }));
         warehouseOptionsLoaded.value = true;
     } catch (err: any) {
+        if (!isCurrentSession()) return;
         warehouseOptions.value = [];
         handleLogisticsError(err, "获取仓库和库位失败");
     }
@@ -1987,10 +2117,12 @@ const toAcceptanceFormItem = (
 
 const openAcceptanceDialog = async (waybill: WaybillItem) => {
     if (loadingAcceptanceWaybillId.value || !canAcceptLogistics.value) return;
+    const isCurrentSession = waybillImagePaste.captureSession();
     loadingAcceptanceWaybillId.value = waybill.id;
 
     try {
         const response = await getInventoryWaybillDetail(waybill.id);
+        if (!isCurrentSession() || !canAcceptLogistics.value) return;
         const record = response.data?.detail?.purchaseLogistics;
         if (response.code !== 200) {
             ElMessage.error(response.msg || "获取最新采购验收信息失败");
@@ -2012,6 +2144,7 @@ const openAcceptanceDialog = async (waybill: WaybillItem) => {
         }
 
         await loadWarehouseOptions();
+        if (!isCurrentSession() || !canAcceptLogistics.value) return;
         activeLogisticsRecord.value = record;
         acceptanceReadonly.value = false;
         acceptanceFormItems.value = record.availableItems.map((item) => toAcceptanceFormItem(item, false));
@@ -2020,9 +2153,9 @@ const openAcceptanceDialog = async (waybill: WaybillItem) => {
         acceptanceImages.value = [];
         showAcceptanceDialog.value = true;
     } catch (err: any) {
-        handleLogisticsError(err, "获取最新采购验收信息失败");
+        if (isCurrentSession()) handleLogisticsError(err, "获取最新采购验收信息失败");
     } finally {
-        loadingAcceptanceWaybillId.value = "";
+        if (isCurrentSession()) loadingAcceptanceWaybillId.value = "";
     }
 };
 
@@ -2091,24 +2224,31 @@ const readAcceptanceFiles = async (
     uploading: { value: boolean },
     label: string,
 ) => {
-    if (!files.length || uploading.value) return;
+    const isCurrent = captureUploadContext(true);
+    if (!files.length || uploading.value || !isCurrent()) return false;
 
     const validFiles = files.filter((file) => {
+        if (target === acceptanceImages && !file.type.startsWith("image/")) {
+            ElMessage.warning("请选择图片文件");
+            return false;
+        }
         if (file.size <= ACCEPTANCE_FILE_MAX_BYTES) return true;
         ElMessage.warning(`${label} ${file.name} 不能超过10MB`);
         return false;
     });
-    if (!validFiles.length) return;
+    if (!validFiles.length) return false;
 
     uploading.value = true;
     let successCount = 0;
     try {
         for (const file of validFiles) {
+            if (!isCurrent()) return false;
             const formData = new FormData();
             formData.append("file", file);
 
             try {
                 const res = await uploadInventoryAttachment(formData);
+                if (!isCurrent()) return false;
                 if (res.code !== 200 || !res.data?.url) {
                     ElMessage.error(res.msg || `${label} ${file.name} 上传失败`);
                     continue;
@@ -2122,25 +2262,30 @@ const readAcceptanceFiles = async (
                 });
                 successCount += 1;
             } catch {
-                ElMessage.error(`${label} ${file.name} 上传失败`);
+                if (isCurrent()) ElMessage.error(`${label} ${file.name} 上传失败`);
             }
         }
     } finally {
-        uploading.value = false;
+        if (isCurrent()) uploading.value = false;
     }
 
     if (successCount > 0) ElMessage.success(`${label}上传完成`);
+    return successCount === files.length;
 };
 
-const selectAcceptanceEvidence = (event: MouseEvent) =>
-    openDesktopFileInput(event, ACCEPTANCE_FILE_MAX_BYTES, (files) =>
-        readAcceptanceFiles(files, acceptanceAttachments, isUploadingAcceptanceEvidence, "异常材料"),
-    );
+const selectAcceptanceEvidence = (event: MouseEvent) => {
+    const isCurrent = captureUploadContext(true);
+    openDesktopFileInput(event, ACCEPTANCE_FILE_MAX_BYTES, files => {
+        if (isCurrent()) void readAcceptanceFiles(files, acceptanceAttachments, isUploadingAcceptanceEvidence, "异常材料");
+    });
+};
 
-const selectAcceptanceImages = (event: MouseEvent) =>
-    openDesktopFileInput(event, ACCEPTANCE_FILE_MAX_BYTES, (files) =>
-        readAcceptanceFiles(files, acceptanceImages, isUploadingAcceptanceImages, "验收图片"),
-    );
+const selectAcceptanceImages = (event: MouseEvent) => {
+    const isCurrent = captureUploadContext(true);
+    openDesktopFileInput(event, ACCEPTANCE_FILE_MAX_BYTES, files => {
+        if (isCurrent()) void readAcceptanceFiles(files, acceptanceImages, isUploadingAcceptanceImages, "验收图片");
+    });
+};
 
 const handleAcceptanceEvidenceChange = (event: Event) => {
     const input = event.target as HTMLInputElement;
@@ -2231,11 +2376,11 @@ const validateAcceptance = () => {
         }
     }
 
-    if (!acceptanceImages.value.length) {
+    if (!acceptanceImages.value.length && !pastedAcceptanceImages.value.length) {
         ElMessage.warning("请上传验收图片");
         return false;
     }
-    if (isAcceptanceEvidenceRequired.value && !acceptanceAttachments.value.some((file) =>
+    if (isAcceptanceEvidenceRequired.value && !pastedAcceptanceEvidence.value.length && !acceptanceAttachments.value.some((file) =>
         String(file.name || "").trim() && String(file.url || "").trim().startsWith("/main/inventory/attachments/"),
     )) {
         ElMessage.warning("不合格数量大于0时必须上传异常材料");
@@ -2246,10 +2391,18 @@ const validateAcceptance = () => {
 };
 
 const submitAcceptance = async () => {
-    if (!activeLogisticsRecord.value || isSubmittingAcceptance.value || !validateAcceptance()) return;
+    if (!activeLogisticsRecord.value || acceptanceReadonly.value || !canAcceptLogistics.value
+        || isSubmittingAcceptance.value || !validateAcceptance()) return;
+    const isCurrent = captureUploadContext(true);
+    const isCurrentSession = waybillImagePaste.captureSession();
     isSubmittingAcceptance.value = true;
 
     try {
+        if (!await uploadPastedImages(pastedAcceptanceImages,
+            files => readAcceptanceFiles(files, acceptanceImages, isUploadingAcceptanceImages, "验收图片"), isCurrent)) return;
+        if (!await uploadPastedImages(pastedAcceptanceEvidence,
+            files => readAcceptanceFiles(files, acceptanceAttachments, isUploadingAcceptanceEvidence, "异常材料"), isCurrent)) return;
+        if (!isCurrent() || !activeLogisticsRecord.value) return;
         const res = await acceptPurchaseLogistics({
             operation: "acceptPurchaseTransport",
             purchaseOrderId: activeLogisticsRecord.value.purchaseOrderId,
@@ -2267,6 +2420,7 @@ const submitAcceptance = async () => {
             })),
         });
 
+        if (!isCurrent()) return;
         if (res.code !== 200) {
             ElMessage.error(res.msg || "验收提交失败");
             return;
@@ -2279,9 +2433,9 @@ const submitAcceptance = async () => {
         activeLogisticsRecord.value = null;
         await loadWaybills();
     } catch (err: any) {
-        handleLogisticsError(err, "验收提交失败");
+        if (isCurrent()) handleLogisticsError(err, "验收提交失败");
     } finally {
-        isSubmittingAcceptance.value = false;
+        if (isCurrentSession()) isSubmittingAcceptance.value = false;
     }
 };
 
@@ -2409,7 +2563,7 @@ const validateWaybillForm = () => {
         return false;
     }
 
-    if (waybillForm.images.length === 0) {
+    if (waybillForm.images.length === 0 && !pastedWaybillImages.value.length) {
         ElMessage.warning("请上传运单图片");
         return false;
     }
@@ -2457,6 +2611,7 @@ const buildWaybillFormData = () => {
 };
 
 const confirmWaybillDialog = async () => {
+    if (isSubmittingWaybill.value) return;
     if (isReadonly.value || waybillDialogMode.value === "view") {
         closeWaybillDialog();
         return;
@@ -2465,14 +2620,20 @@ const confirmWaybillDialog = async () => {
         return;
     }
 
+    const isCurrent = captureUploadContext();
+    const isCurrentSession = waybillImagePaste.captureSession();
     isSubmittingWaybill.value = true;
 
     try {
+        if (!await uploadPastedImages(pastedWaybillImages, readImageFiles, isCurrent)) return;
+        if (!await uploadPastedImages(pastedWaybillAttachments, readAttachmentFiles, isCurrent)) return;
+        if (!isCurrent()) return;
         const payload = buildWaybillFormData();
         const response = waybillDialogMode.value === "edit"
             ? await updateInventoryWaybill(payload)
             : await addInventoryWaybill(payload);
 
+        if (!isCurrent()) return;
         if (response.code !== 200) {
             ElMessage.error(response.msg || "保存运单记录失败");
             return;
@@ -2482,9 +2643,9 @@ const confirmWaybillDialog = async () => {
         closeWaybillDialog();
         await reloadWaybillsFromFirstPage();
     } catch {
-        ElMessage.error("保存运单记录失败");
+        if (isCurrent()) ElMessage.error("保存运单记录失败");
     } finally {
-        isSubmittingWaybill.value = false;
+        if (isCurrentSession()) isSubmittingWaybill.value = false;
     }
 };
 
@@ -2578,39 +2739,46 @@ const downloadWaybillAttachments = async (waybill: WaybillItem) => {
 };
 
 const readImageFiles = async (files: File[]) => {
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    const isCurrent = captureUploadContext();
+    if (!isCurrent()) return false;
+    const imageFiles = files.filter((file) => file.type.startsWith("image/") && file.size <= ACCEPTANCE_FILE_MAX_BYTES);
 
     if (!imageFiles.length) {
-        ElMessage.warning("请选择图片文件");
-        return;
+        ElMessage.warning("请选择不超过10MB的图片文件");
+        return false;
     }
 
     ElMessage.info("正在上传图片...");
 
+    let successCount = 0;
     // 逐个上传图片到图床
     for (const file of imageFiles) {
+        if (!isCurrent()) return false;
         const formData = new FormData();
         formData.append("image", file);
 
         try {
             const res: any = await uploadImage(formData);
+            if (!isCurrent()) return false;
 
             if (res.code === 200 && res.data?.path) {
                 uploadedImages.value = [...uploadedImages.value, {
                     name: file.name,
                     url: res.data.path,
                 }];
+                successCount += 1;
             } else {
                 ElMessage.error(`图片 ${file.name} 上传失败`);
             }
         } catch {
-            ElMessage.error(`图片 ${file.name} 上传失败`);
+            if (isCurrent()) ElMessage.error(`图片 ${file.name} 上传失败`);
         }
     }
 
     // 同步第一张图片到表单
     syncImages();
-    ElMessage.success("图片上传完成");
+    if (successCount) ElMessage.success("图片上传完成");
+    return successCount === files.length;
 };
 
 const syncImages = () => {
@@ -2641,35 +2809,45 @@ const removeImage = (index: number) => {
 };
 
 const readAttachmentFiles = async (files: File[]) => {
-    if (!files.length) {
-        return;
+    const isCurrent = captureUploadContext();
+    if (!files.length || !isCurrent()) {
+        return false;
     }
 
     ElMessage.info("正在上传附件...");
 
+    let successCount = 0;
     // 逐个上传附件到本地服务器
     for (const file of files) {
+        if (!isCurrent()) return false;
+        if (file.size > ACCEPTANCE_FILE_MAX_BYTES) {
+            ElMessage.warning(`附件 ${file.name} 不能超过10MB`);
+            continue;
+        }
         const formData = new FormData();
         formData.append("file", file);
 
         try {
             const res: any = await uploadInventoryAttachment(formData);
+            if (!isCurrent()) return false;
 
             if (res.code === 200 && res.data?.url) {
                 uploadedAttachments.value = [...uploadedAttachments.value, {
                     name: file.name,
                     url: res.data.url,
                 }];
+                successCount += 1;
             } else {
                 ElMessage.error(`附件 ${file.name} 上传失败`);
             }
         } catch {
-            ElMessage.error(`附件 ${file.name} 上传失败`);
+            if (isCurrent()) ElMessage.error(`附件 ${file.name} 上传失败`);
         }
     }
 
     waybillForm.attachmentNames = uploadedAttachments.value.map((file) => file.name);
-    ElMessage.success("附件上传完成");
+    if (successCount) ElMessage.success("附件上传完成");
+    return successCount === files.length;
 };
 
 const handleAttachmentFileChange = (event: Event) => {

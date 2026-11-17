@@ -523,7 +523,7 @@ class InventoryProductModel {
 
     async updateSnPrintState(
         id: string,
-        payload: { monthKey?: string; lastSerial?: unknown },
+        payload: { monthKey?: string; firstSerial?: unknown; lastSerial?: unknown },
         actor = "",
     ) {
         if (!isValidObjectId(id)) {
@@ -531,31 +531,20 @@ class InventoryProductModel {
         }
 
         const monthKey = toText(payload.monthKey);
-        if (!/^\d{4}-\d{2}$/.test(monthKey)) {
-            throwInventoryError(400, CODE.INVALID_PARAMS, "月份格式错误");
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) {
+            throwInventoryError(400, CODE.INVALID_PARAMS, "月份必须为有效的 YYYY-MM 格式");
         }
 
         const nextLastSerial = Number(payload.lastSerial);
-        if (!Number.isInteger(nextLastSerial) || nextLastSerial < 0) {
-            throwInventoryError(400, CODE.INVALID_PARAMS, "流水号必须是大于等于 0 的整数");
+        if (!Number.isSafeInteger(nextLastSerial) || nextLastSerial < 0) {
+            throwInventoryError(400, CODE.INVALID_PARAMS, "流水号必须是大于等于 0 的安全整数");
         }
 
-        const current = await this.product
-            .findOne({ _id: id, _isDeleted: { $ne: true } })
-            .select("snPrintState")
-            .lean() as any;
-        if (!current) {
-            throwInventoryError(404, CODE.INVENTORY_NOT_FOUND);
-        }
-
-        const currentState = current.snPrintState || {};
-        const currentLastSerial = Number(currentState.lastSerial || 0);
-        if (currentState.monthKey === monthKey && nextLastSerial <= currentLastSerial) {
-            throwInventoryError(
-                409,
-                CODE.INVENTORY_DUPLICATE_CODE,
-                `当月延顺号已打印至：${String(currentLastSerial).padStart(4, "0")}`,
-            );
+        const hasFirstSerial = payload.firstSerial !== undefined;
+        const firstSerial = hasFirstSerial ? Number(payload.firstSerial) : nextLastSerial;
+        if (hasFirstSerial && (!Number.isSafeInteger(firstSerial)
+            || firstSerial < 1 || firstSerial > nextLastSerial)) {
+            throwInventoryError(400, CODE.INVALID_PARAMS, "起始流水号必须是大于 0 且不超过结束流水号的安全整数");
         }
 
         const snPrintState = {
@@ -565,10 +554,51 @@ class InventoryProductModel {
             updatedBy: actor,
         };
 
-        return await this.product.findByIdAndUpdate(
-            id,
+        // Web and desktop batches reserve the entire range. Legacy callers
+        // still advance the end serial, but both paths check and write in one
+        // operation so another registration cannot race the previous read.
+        const filter: Record<string, any> = {
+            _id: id,
+            _isDeleted: { $ne: true },
+            $or: [
+                { "snPrintState.monthKey": { $ne: monthKey } },
+                { "snPrintState.lastSerial": { $lt: firstSerial } },
+                ...(firstSerial > 0 ? [{ "snPrintState.lastSerial": null }] : []),
+            ],
+        };
+        // Every caller must preserve newer reservations, including old clients
+        // that only send the end serial. The state stores one month only.
+        filter.$and = [{
+            $or: [
+                { "snPrintState.monthKey": { $lte: monthKey } },
+                { "snPrintState.monthKey": null },
+            ],
+        }];
+        const updated = await this.product.findOneAndUpdate(
+            filter,
             { $set: { snPrintState, updatedBy: actor } },
             { new: true, runValidators: true },
+        );
+        if (updated) {
+            return updated;
+        }
+
+        // This read only selects an error message; it cannot authorize a write.
+        const current = await this.product
+            .findOne({ _id: id, _isDeleted: { $ne: true } })
+            .select("snPrintState")
+            .lean() as any;
+        if (!current) {
+            throwInventoryError(404, CODE.INVENTORY_NOT_FOUND);
+        }
+        if (toText(current.snPrintState?.monthKey) > monthKey) {
+            throwInventoryError(409, CODE.INVENTORY_DUPLICATE_CODE, "已登记更新月份的流水号，旧月份批次已过期，请重新生成批次");
+        }
+        const currentLastSerial = Number(current.snPrintState?.lastSerial || 0);
+        throwInventoryError(
+            409,
+            CODE.INVENTORY_DUPLICATE_CODE,
+            `当月延顺号已打印至：${String(currentLastSerial).padStart(4, "0")}，请重新获取流水号后生成批次`,
         );
     }
 

@@ -21,6 +21,7 @@ const ATTACHMENT_CONFIG: &str = include_str!("../../../../deploy/nginx/attachmen
 const IMAGE_PATH: &str = "/image/upload";
 const MAX_ERP_TIMEOUT_MS: u64 = 600_000;
 const IMAGE_TIMEOUT_MS: u64 = 300_000;
+const MAX_PRINT_RESOURCE_BYTES: usize = 4 * 1024 * 1024;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -105,6 +106,37 @@ impl Transport {
         self.notification_get("/admin/profile", token).await
     }
 
+    pub(crate) async fn desktop_resource_get(&self, path: &str, token: &str) -> Result<(u16, Vec<u8>), String> {
+        self.notification_get(path, token).await
+    }
+
+    pub(crate) async fn desktop_print_resource_get(&self, path: &str, token: &str) -> Result<(u16, Vec<u8>), String> {
+        let url = request_url(&self.erp_origin, path)?;
+        if !self.allows_erp_request(&Method::GET, url.path()) {
+            return Err("不允许的 ERP 接口".into());
+        }
+        let headers = request_headers(BTreeMap::from([("Token".into(), token.into())]), false)?;
+        let mut response = self.client.get(url)
+            .headers(headers)
+            .timeout(Duration::from_secs(5))
+            .send().await.map_err(network_error)?;
+        let status = response.status().as_u16();
+        if response.content_length().is_some_and(|length| length > MAX_PRINT_RESOURCE_BYTES as u64) {
+            return Err("ERP_SERVICE: 打印校验响应超过大小限制，请稍后重试或联系管理员".into());
+        }
+        // Preserve error bodies so print authorization can distinguish a server
+        // rejection from an unavailable or malformed response. Do not base64-wrap
+        // this internal response or change the notification helpers' contract.
+        let mut bytes = Vec::new();
+        while let Some(chunk) = response.chunk().await.map_err(network_error)? {
+            if chunk.len() > MAX_PRINT_RESOURCE_BYTES - bytes.len() {
+                return Err("ERP_SERVICE: 打印校验响应超过大小限制，请稍后重试或联系管理员".into());
+            }
+            bytes.extend_from_slice(&chunk);
+        }
+        Ok((status, bytes))
+    }
+
     async fn notification_get(&self, path: &str, token: &str) -> Result<(u16, Vec<u8>), String> {
         let request = DesktopRequest {
             method: "GET".into(),
@@ -127,6 +159,32 @@ impl Transport {
             || ((*method == Method::GET || *method == Method::HEAD)
                 && !path.ends_with('/')
                 && self.attachment_route.is_match(path))
+    }
+
+    pub(crate) async fn start_download(&self, path: &str, token: &str) -> Result<Response, String> {
+        let url = request_url(&self.erp_origin, path)?;
+        if !self.allows_erp_request(&Method::GET, url.path()) {
+            return Err("不允许的 ERP 下载地址".into());
+        }
+        let mut headers = BTreeMap::new();
+        if !url.path().starts_with("/main/") {
+            headers.insert("Token".to_owned(), token.to_owned());
+        }
+        let response = self.client.get(url)
+            .headers(request_headers(headers, false)?)
+            .timeout(Duration::from_millis(MAX_ERP_TIMEOUT_MS))
+            .send().await.map_err(network_error)?;
+        if !response.status().is_success() {
+            return Err(match response.status().as_u16() {
+                401 | 403 => "当前账号无权下载此文件，请重新登录或联系管理员",
+                404 => "下载文件已不存在",
+                _ => "下载请求失败，请稍后重试",
+            }.into());
+        }
+        if response.content_length().is_some_and(|length| length > MAX_PAYLOAD_BYTES as u64) {
+            return Err("响应超过桌面客户端大小限制".into());
+        }
+        Ok(response)
     }
 
     async fn send(
