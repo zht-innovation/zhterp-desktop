@@ -420,7 +420,11 @@ pub(crate) async fn desktop_print_printers(window: WebviewWindow) -> Result<Vec<
 #[tauri::command]
 pub(crate) async fn desktop_print_image(app: AppHandle, window: WebviewWindow, url: String) -> Result<String, String> {
     main_only(&window)?;
-    let (revision, _) = session(&app.state::<DesktopPrintState>().0.lock().map_err(|_| "打印状态不可用")?)?;
+    let (revision, _) = {
+        let state = app.state::<DesktopPrintState>();
+        let current = state.0.lock().map_err(|_| "打印状态不可用")?;
+        session(&current)?
+    };
     let url = tauri::Url::parse(&url).map_err(|_| "打印图片地址无效")?;
     if url.origin().ascii_serialization() != "https://server.zhtaero.com" || !url.username().is_empty() || url.password().is_some() {
         return Err("打印图片地址不在已有图床范围内".into());
@@ -459,7 +463,11 @@ pub(crate) fn desktop_print_list(app: AppHandle, window: WebviewWindow) -> Resul
 pub(crate) async fn desktop_print_settings(app: AppHandle, window: WebviewWindow, kind: String, settings: PrintSettings) -> Result<(), String> {
     main_only(&window)?;
     if !matches!(kind.as_str(), "sales" | "sku" | "sn") { return Err("打印类型无效".into()); }
-    let (revision, _) = session(&app.state::<DesktopPrintState>().0.lock().map_err(|_| "打印状态不可用")?)?;
+    let (revision, _) = {
+        let state = app.state::<DesktopPrintState>();
+        let current = state.0.lock().map_err(|_| "打印状态不可用")?;
+        session(&current)?
+    };
     native::validate(&settings, &desktop_print_printers(window).await?)?;
     let state = app.state::<DesktopPrintState>();
     let mut current = state.0.lock().map_err(|_| "打印状态不可用")?;
@@ -473,7 +481,11 @@ pub(crate) async fn desktop_print_settings(app: AppHandle, window: WebviewWindow
 pub(crate) async fn desktop_print_prepare(app: AppHandle, window: WebviewWindow, document: PrintDocument, settings: PrintSettings) -> Result<String, String> {
     main_only(&window)?;
     validate_document(&document, true)?;
-    let (revision, token) = session(&app.state::<DesktopPrintState>().0.lock().map_err(|_| "打印状态不可用")?)?;
+    let (revision, token) = {
+        let state = app.state::<DesktopPrintState>();
+        let current = state.0.lock().map_err(|_| "打印状态不可用")?;
+        session(&current)?
+    };
     native::validate(&settings, &desktop_print_printers(window.clone()).await?)?;
     let permission_stamp = authorize(&app, &token, &document).await?;
     let state = app.state::<DesktopPrintState>();

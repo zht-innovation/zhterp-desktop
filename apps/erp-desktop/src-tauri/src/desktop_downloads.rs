@@ -643,7 +643,7 @@ pub(crate) fn open_download_task(window: WebviewWindow, state: State<'_, Desktop
         if !can_open_file(&path) {
             return Err("此文件类型不支持在下载中心直接打开，请使用“定位目录”后自行确认文件".into());
         }
-        tauri_plugin_opener::open_path(path.to_string_lossy(), None::<&str>).map_err(|_| "无法使用系统程序打开文件")?;
+        tauri_plugin_opener::open_path(&path, None::<&str>).map_err(|_| "无法使用系统程序打开文件")?;
     }
     Ok(())
 }
