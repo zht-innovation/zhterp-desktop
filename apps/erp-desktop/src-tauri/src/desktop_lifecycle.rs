@@ -88,6 +88,7 @@ pub(crate) fn setup(app: &mut App, start_hidden: bool) -> Result<(), Box<dyn Err
     let main_window = window.clone();
     window.on_window_event(move |event| {
         if let WindowEvent::CloseRequested { api, .. } = event {
+            crate::desktop_window_state::save(&main_window);
             if main_window.hide().is_ok() {
                 api.prevent_close();
             }
@@ -108,7 +109,8 @@ pub(crate) fn setup(app: &mut App, start_hidden: bool) -> Result<(), Box<dyn Err
         }
     }
 
-    if SHOW_REQUESTED.swap(false, Ordering::Relaxed) {
+    let show_requested = SHOW_REQUESTED.swap(false, Ordering::Relaxed);
+    if !start_hidden || show_requested {
         show_main(handle);
     }
     Ok(())
@@ -119,8 +121,13 @@ pub(crate) fn show_main(app: &AppHandle) {
     let Some(window) = app.get_webview_window(crate::MAIN_WINDOW) else {
         return;
     };
+    if !crate::desktop_window_state::is_ready(app) {
+        return;
+    }
     SHOW_REQUESTED.store(false, Ordering::Relaxed);
     let _ = window.unminimize();
+    crate::desktop_window_state::ensure_visible(&window);
+    crate::desktop_window_state::restore_maximized(&window);
     let _ = window.show();
     let _ = window.set_focus();
 

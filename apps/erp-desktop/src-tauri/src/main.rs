@@ -5,6 +5,7 @@ mod desktop_lifecycle;
 mod desktop_notification_popup;
 mod desktop_notifications;
 mod desktop_updates;
+mod desktop_window_state;
 mod local_files;
 mod session;
 mod transport;
@@ -176,6 +177,7 @@ fn main() {
         })
         .setup(move |app| {
             app.manage(transport::Transport::new()?);
+            desktop_window_state::init(app.handle());
             desktop_notifications::start(app.handle());
             let app_handle = app.handle().clone();
             let image_sources = format!("{} {}", transport::IMAGE_ORIGIN, transport::ERP_ORIGIN);
@@ -184,7 +186,7 @@ fn main() {
                 .title(app.config().product_name.as_deref().unwrap_or("ZH ERP"))
                 .inner_size(1360.0, 860.0)
                 .min_inner_size(900.0, 600.0)
-                .visible(!start_hidden)
+                .visible(false)
                 .devtools(false)
                 .use_https_scheme(true)
                 .on_page_load(|window, payload| {
@@ -230,7 +232,8 @@ fn main() {
             #[cfg(target_os = "windows")]
             let window = window.disable_drag_drop_handler();
 
-            window.build()?;
+            let window = window.build()?;
+            desktop_window_state::restore(&window);
             #[cfg(target_os = "windows")]
             if let Err(error) = desktop_notification_popup::setup(app.handle()) {
                 eprintln!("Failed to prepare ERP desktop notification window: {error}");
@@ -240,10 +243,15 @@ fn main() {
         .build(context)
         .expect("failed to start ZH ERP desktop");
 
-    app.run(|_app, _event| {
+    app.run(|app, event| {
+        if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+            if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
+                desktop_window_state::save(&window);
+            }
+        }
         #[cfg(target_os = "macos")]
-        if matches!(_event, tauri::RunEvent::Reopen { .. }) {
-            desktop_lifecycle::show_main(_app);
+        if matches!(event, tauri::RunEvent::Reopen { .. }) {
+            desktop_lifecycle::show_main(app);
         }
     });
 }
