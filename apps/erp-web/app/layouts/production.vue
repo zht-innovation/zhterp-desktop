@@ -13,33 +13,8 @@
 
 <script setup lang="ts">
 import ConfigurationSidebarLayout from "~/components/configuration/ConfigurationSidebarLayout.vue";
-import { canAccessConfigurationPath } from "~~/shared/utils/adminPermission";
+import { useErpSidebarSections } from "~/composables/useErpSidebarSections";
 
-const adminInfo = useState<{ role?: number }>("admin_info", () => ({}));
-const sections = computed(() => [
-    {
-        id: "production.orders",
-        label: "订单总览",
-        icon: "lucide:clipboard-list",
-        path: "/configuration/production/orders",
-    },
-    {
-        id: "production.production-orders",
-        label: "生产单",
-        icon: "lucide:clipboard-check",
-        path: "/configuration/production/production-orders",
-    },
-    {
-        id: "production.requisitions",
-        label: "发料管理",
-        icon: "lucide:package-open",
-        path: "/configuration/production/requisitions",
-    },
-    {
-        id: "production.completion",
-        label: "完工入库",
-        icon: "lucide:package-check",
-        path: "/configuration/production/completion",
-    },
-].filter((section) => canAccessConfigurationPath(Number(adminInfo.value?.role), section.path)));
+const sidebarMenus = useErpSidebarSections();
+const sections = computed(() => sidebarMenus.value.production);
 </script>

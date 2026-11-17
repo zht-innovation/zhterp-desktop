@@ -11,13 +11,8 @@
 
 <script setup lang="ts">
 import ConfigurationSidebarLayout from "~/components/configuration/ConfigurationSidebarLayout.vue";
+import { useErpSidebarSections } from "~/composables/useErpSidebarSections";
 
-const sidebarSections = [
-    {
-        id: "settings.index",
-        label: "申请类别",
-        icon: "lucide:clipboard-list",
-        path: "/configuration/settings",
-    },
-];
+const sidebarMenus = useErpSidebarSections();
+const sidebarSections = computed(() => sidebarMenus.value.settings);
 </script>

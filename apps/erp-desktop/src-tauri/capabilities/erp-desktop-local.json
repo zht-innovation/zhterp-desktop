@@ -8,6 +8,7 @@
     "permissions": [
         "allow-desktop-info",
         "allow-desktop-about-ready",
+        "allow-desktop-quick-launch-ready",
         "allow-check-desktop-update",
         "allow-install-desktop-update",
         "allow-erp-request",

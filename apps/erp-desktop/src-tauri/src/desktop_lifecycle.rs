@@ -12,6 +12,7 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 
 pub(crate) const AUTOSTART_ARG: &str = "--autostart";
 pub(crate) const TRAY_ID: &str = "erp-tray";
+pub(crate) const QUICK_LAUNCH_MENU: &str = "erp-quick-launch";
 const OPEN_MENU: &str = "erp-open-main";
 const QUIT_MENU: &str = "erp-quit";
 const OPEN_TRAY_MENU: &str = "erp-tray-open-main";
@@ -19,6 +20,7 @@ const QUIT_TRAY_MENU: &str = "erp-tray-quit";
 const AUTOSTART_MENU: &str = "erp-toggle-autostart";
 const ABOUT_MENU: &str = "erp-about";
 const ABOUT_EVENT: &str = "erp-open-about";
+const QUICK_LAUNCH_EVENT: &str = "erp-open-quick-launch";
 
 // A second launch may arrive before the main window has been created.
 static SHOW_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -27,10 +29,17 @@ struct DesktopMenu {
     autostart: CheckMenuItem<Wry>,
     shortcut_warning_pending: AtomicBool,
     about: Mutex<AboutMenu>,
+    quick_launch: Mutex<QuickLaunchMenu>,
 }
 
 #[derive(Default)]
 struct AboutMenu {
+    ready: bool,
+    open_requested: bool,
+}
+
+#[derive(Default)]
+struct QuickLaunchMenu {
     ready: bool,
     open_requested: bool,
 }
@@ -52,6 +61,7 @@ pub(crate) fn append_app_menu(app: &AppHandle, menu: &Menu<Wry>) -> tauri::Resul
         autostart,
         shortcut_warning_pending: AtomicBool::new(false),
         about: Mutex::default(),
+        quick_launch: Mutex::default(),
     });
     Ok(())
 }
@@ -144,6 +154,7 @@ pub(crate) fn handle_menu(app: &AppHandle, id: &str) {
         QUIT_MENU | QUIT_TRAY_MENU => app.exit(0),
         AUTOSTART_MENU => toggle_autostart(app),
         ABOUT_MENU => open_about(app),
+        QUICK_LAUNCH_MENU => open_quick_launch(app),
         _ => {}
     }
 }
@@ -167,6 +178,27 @@ fn open_about(app: &AppHandle) {
     let mut about = menu.about.lock().expect("ERP About menu state");
     about.open_requested = !about.ready
         || app.emit_to(EventTarget::webview_window(crate::MAIN_WINDOW), ABOUT_EVENT, ()).is_err();
+}
+
+#[tauri::command]
+pub(crate) fn desktop_quick_launch_ready(app: AppHandle) -> bool {
+    let menu = app.state::<DesktopMenu>();
+    let mut quick_launch = menu.quick_launch.lock().expect("ERP quick launch menu state");
+    quick_launch.ready = true;
+    std::mem::take(&mut quick_launch.open_requested)
+}
+
+pub(crate) fn reset_quick_launch_ready(app: &AppHandle) {
+    let menu = app.state::<DesktopMenu>();
+    menu.quick_launch.lock().expect("ERP quick launch menu state").ready = false;
+}
+
+fn open_quick_launch(app: &AppHandle) {
+    show_main(app);
+    let menu = app.state::<DesktopMenu>();
+    let mut quick_launch = menu.quick_launch.lock().expect("ERP quick launch menu state");
+    quick_launch.open_requested = !quick_launch.ready
+        || app.emit_to(EventTarget::webview_window(crate::MAIN_WINDOW), QUICK_LAUNCH_EVENT, ()).is_err();
 }
 
 fn register_shortcut(app: &AppHandle) -> Result<(), Box<dyn Error>> {

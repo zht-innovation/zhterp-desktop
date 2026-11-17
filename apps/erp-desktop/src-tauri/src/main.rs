@@ -146,6 +146,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             transport::desktop_info,
             desktop_lifecycle::desktop_about_ready,
+            desktop_lifecycle::desktop_quick_launch_ready,
             desktop_updates::check_desktop_update,
             desktop_updates::install_desktop_update,
             transport::erp_request,
@@ -162,7 +163,14 @@ fn main() {
             let menu = Menu::default(app)?;
             localize_menu_items(menu.items()?, &app.package_info().name)?;
             let back = MenuItem::with_id(app, BACK_MENU, "返回上一页", true, None::<&str>)?;
-            menu.append(&Submenu::with_items(app, "导航", true, &[&back])?)?;
+            let quick_launch = MenuItem::with_id(
+                app,
+                desktop_lifecycle::QUICK_LAUNCH_MENU,
+                "快捷入口",
+                true,
+                Some("CmdOrCtrl+K"),
+            )?;
+            menu.append(&Submenu::with_items(app, "导航", true, &[&back, &quick_launch])?)?;
             desktop_lifecycle::append_app_menu(app, &menu)?;
             Ok(menu)
         })
@@ -192,6 +200,7 @@ fn main() {
                 .on_page_load(|window, payload| {
                     if payload.event() == PageLoadEvent::Started {
                         desktop_lifecycle::reset_about_ready(window.app_handle());
+                        desktop_lifecycle::reset_quick_launch_ready(window.app_handle());
                     }
                 })
                 .on_web_resource_request(move |_, response| {
