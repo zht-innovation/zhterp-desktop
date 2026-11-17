@@ -1,11 +1,11 @@
-/* Uppercase PX keeps the desktop root independent of postcss-pxtorem and window width. */
+/* Uppercase PX keeps the desktop root and sidebar sizing independent of postcss-pxtorem and window width. */
 html.erp-desktop-shell {
     font-size: 16PX !important;
 }
 
 .configuration-section-layout.erp-app--desktop {
-    --sidebar-width-expanded: 244px;
-    --sidebar-width-collapsed: 68px;
+    --sidebar-width-expanded: 244PX;
+    --sidebar-width-collapsed: 68PX;
     --desktop-brand: #2684f5;
     --desktop-text: #263d5b;
     --desktop-muted: #768ba8;
@@ -63,8 +63,8 @@ html.erp-desktop-shell {
 
 .erp-app--desktop .brand-name {
     color: var(--desktop-text);
-    font-size: 11px;
-    line-height: 16px;
+    font-size: 14PX;
+    line-height: 20PX;
     font-weight: 600;
 }
 
@@ -75,8 +75,13 @@ html.erp-desktop-shell {
     gap: 5px;
     border-radius: 0;
     color: var(--desktop-muted);
-    font-size: 11px;
-    line-height: 17px;
+    font-size: 14PX;
+    line-height: 20PX;
+}
+
+.erp-app--desktop .module-count {
+    font-size: 12PX;
+    line-height: 18PX;
 }
 
 .erp-app--desktop .module-icon {
@@ -130,8 +135,8 @@ html.erp-desktop-shell {
     padding: 0 14px;
     border-radius: 6px;
     color: #617c9f;
-    font-size: 13px;
-    line-height: 20px;
+    font-size: 16PX;
+    line-height: 24PX;
     font-weight: 400;
 }
 
@@ -183,7 +188,7 @@ html.erp-desktop-shell {
 
 .erp-app--desktop .back-link,
 .erp-app--desktop.sidebar-collapsed .back-link {
-    width: 68px;
+    width: var(--sidebar-width-collapsed);
     height: 64px;
     flex-direction: column;
     gap: 6px;
@@ -191,8 +196,8 @@ html.erp-desktop-shell {
     border-top: 0;
     border-right: 1px solid var(--desktop-border);
     color: var(--desktop-muted);
-    font-size: 11px;
-    line-height: 16px;
+    font-size: 14PX;
+    line-height: 20PX;
 }
 
 .erp-app--desktop .back-icon {
