@@ -10,12 +10,85 @@ mod session;
 mod transport;
 
 use tauri::http::header::{HeaderValue, CONTENT_SECURITY_POLICY};
-use tauri::menu::{Menu, MenuItem, Submenu};
+use tauri::menu::{Menu, MenuItem, MenuItemKind, Submenu};
 use tauri::webview::{DownloadEvent, NewWindowResponse, PageLoadEvent};
 use tauri::{Manager, Url, WebviewUrl, WebviewWindowBuilder};
 
 pub(crate) const MAIN_WINDOW: &str = "erp";
 const BACK_MENU: &str = "erp-history-back";
+
+fn chinese_menu_text(text: &str) -> Option<String> {
+    let label = text.replace('&', "");
+    let translated = match label.as_str() {
+        "File" => "文件",
+        "Edit" => "编辑",
+        "Window" => "窗口",
+        "Help" => "帮助",
+        "View" => "视图",
+        "Undo" => "撤销",
+        "Redo" => "重做",
+        "Cut" => "剪切",
+        "Copy" => "复制",
+        "Paste" => "粘贴",
+        "Select All" => "全选",
+        "Minimize" => "最小化",
+        "Maximize" => "最大化",
+        "Zoom" => "缩放",
+        "Close" | "Close Window" => "关闭窗口",
+        "Quit" | "Exit" => "退出",
+        "About" => "关于",
+        "Services" => "服务",
+        "Hide" => "隐藏",
+        "Hide Others" => "隐藏其他",
+        "Show All" => "全部显示",
+        "Toggle Full Screen" => "切换全屏",
+        "Fullscreen" | "Enter Fullscreen" | "Enter Full Screen" => "进入全屏",
+        "Exit Fullscreen" | "Exit Full Screen" => "退出全屏",
+        "Bring All to Front" => "全部置于前台",
+        _ => {
+            // macOS includes the application name in these native menu labels.
+            for (prefix, translation) in [("About ", "关于 "), ("Hide ", "隐藏 "), ("Quit ", "退出 ")] {
+                if let Some(name) = text.strip_prefix(prefix) {
+                    return Some(format!("{translation}{name}"));
+                }
+            }
+            return None;
+        }
+    };
+
+    // Preserve Windows access keys, for example Cu&t becomes 剪切(&t).
+    if cfg!(target_os = "windows") {
+        if let Some((_, suffix)) = text.split_once('&') {
+            if let Some(key) = suffix.chars().next() {
+                return Some(format!("{translated}(&{key})"));
+            }
+        }
+    }
+    Some(translated.to_owned())
+}
+
+fn localize_menu_items(items: Vec<MenuItemKind<tauri::Wry>>, app_name: &str) -> tauri::Result<()> {
+    for item in items {
+        match item {
+            MenuItemKind::Submenu(submenu) => {
+                let text = submenu.text()?;
+                if text != app_name {
+                    if let Some(translated) = chinese_menu_text(&text) {
+                        submenu.set_text(translated)?;
+                    }
+                }
+                localize_menu_items(submenu.items()?, app_name)?;
+            }
+            MenuItemKind::Predefined(item) => {
+                if let Some(translated) = chinese_menu_text(&item.text()?) {
+                    item.set_text(translated)?;
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
 
 fn is_https(url: &Url) -> bool {
     url.scheme() == "https"
@@ -86,6 +159,7 @@ fn main() {
         ])
         .menu(|app| {
             let menu = Menu::default(app)?;
+            localize_menu_items(menu.items()?, &app.package_info().name)?;
             let back = MenuItem::with_id(app, BACK_MENU, "返回上一页", true, None::<&str>)?;
             menu.append(&Submenu::with_items(app, "导航", true, &[&back])?)?;
             desktop_lifecycle::append_app_menu(app, &menu)?;
