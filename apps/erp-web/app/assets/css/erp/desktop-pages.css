@@ -31,3 +31,59 @@
     height: 100%;
     min-height: 0;
 }
+
+/* 桌面表格统一字号，包含 Teleport 弹窗；保留打印排版和图标自身尺寸。 */
+@media screen {
+    html.erp-desktop-shell :is(
+        .erp-table-frame,
+        .cost-tree-table,
+        .customer-table-area,
+        .acceptance-table,
+        .items-table,
+        .product-table,
+        .order-product-table,
+        .purchase-product-table,
+        .simple-table,
+        .structure-table,
+        .analysis-table,
+        .inventory-ledger-table,
+        .inventory-restriction-table,
+        .audit-record-table,
+        .detail-source-table,
+        .review-inventory-table,
+        .order-check-table,
+        .flow-rule-table,
+        .assignment-table,
+        table,
+        [role="table"]
+    ):not(.print-root *),
+    html.erp-desktop-shell :is(
+        .erp-table-frame,
+        .cost-tree-table,
+        .customer-table-area,
+        .acceptance-table,
+        .items-table,
+        .product-table,
+        .order-product-table,
+        .purchase-product-table,
+        .simple-table,
+        .structure-table,
+        .analysis-table,
+        .inventory-ledger-table,
+        .inventory-restriction-table,
+        .audit-record-table,
+        .detail-source-table,
+        .review-inventory-table,
+        .order-check-table,
+        .flow-rule-table,
+        .assignment-table,
+        table,
+        [role="table"]
+    ):not(.print-root *) :is(
+        div, span, p, small, strong, b, a, button,
+        input, select, textarea, label, th, td
+    ):not(.print-root *, .iconify, .iconify *, .el-icon, .el-icon *, svg, svg *) {
+        /* PX 避免 pxtorem 转换；覆盖页面 scoped 样式中的独立字号。 */
+        font-size: 13PX !important;
+    }
+}

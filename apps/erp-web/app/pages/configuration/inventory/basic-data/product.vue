@@ -4466,7 +4466,7 @@ input:disabled {
 .product-page--desktop > .erp-table-frame .table-head {
     height: 44px;
     color: #5e7da3;
-    font-size: 12px;
+    font-size: 13PX;
     font-weight: 400;
     line-height: 20px;
 }
@@ -4475,7 +4475,7 @@ input:disabled {
 .product-page--desktop > .erp-table-frame .selection-row,
 .product-page--desktop > .erp-table-frame .action-row {
     height: 76px;
-    font-size: 12px;
+    font-size: 13PX;
     font-weight: 400;
     line-height: 20px;
 }
@@ -4506,7 +4506,7 @@ input:disabled {
 
 .desktop-product-table .action-head {
     color: #5e7da3;
-    font-size: 12px;
+    font-size: 13PX;
     font-weight: 400;
 }
 
