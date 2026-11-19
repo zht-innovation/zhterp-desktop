@@ -175,8 +175,9 @@ import {
 } from '~/composables/api/useNotificationApi'
 import type { NotificationItem, NotificationStats } from '~/composables/api/useNotificationApi'
 import { useNotificationUnread } from '~/composables/useNotificationUnread'
-import { systemUpdates, type SystemUpdateType } from '~/config/systemUpdates'
-import { formatLocalDateRange, getDateSortTimestamp } from '~/utils/time'
+import { systemUpdates } from '~/config/systemUpdates'
+import { formatLocalDateRange } from '~/utils/time'
+import { mergeNotificationAnnouncements } from '~/utils/notificationAnnouncements'
 import { resolveInventoryCheckPath } from '~/utils/inventory/orderCheckNotification'
 
 const { mainSiteOrigin } = useRuntimeConfig().public;
@@ -187,49 +188,17 @@ definePageMeta({
 
 const loading = ref(false)
 const searchKeyword = ref('')
-const activeTab = ref<'announcement' | 'message'>('announcement')
+const route = useRoute()
+const router = useRouter()
+const activeTab = ref<'announcement' | 'message'>(route.query.tab === 'message' ? 'message' : 'announcement')
 
 // 公告栏数据
 const apiAnnouncementList = ref<NotificationItem[]>([])
 const announcementStats = ref<NotificationStats>({ total: 0, unread: 0 })
 
-const updateTagLabels: Record<SystemUpdateType, string> = {
-    feature: '新功能',
-    fix: '修复',
-    improvement: '优化',
-    notice: '通知',
-}
-
-const systemAnnouncementList = computed<NotificationItem[]>(() => {
-    const keyword = searchKeyword.value.trim().toLowerCase()
-
-    return systemUpdates
-        .map((update) => ({
-            _id: `system-update-${update.version}`,
-            type: 'announcement' as const,
-            category: '系统更新',
-            title: update.title,
-            content: update.items.join('\n'),
-            version: `v${update.version}`,
-            tag: updateTagLabels[update.type],
-            isRead: true,
-            _time: update.date,
-        }))
-        .filter((item) => {
-            if (!keyword) return true
-            return [item.title, item.content, item.version, item.tag]
-                .some((value) => value.toLowerCase().includes(keyword))
-        })
-})
-
-const announcementList = computed(() => {
-    return [
-        ...systemAnnouncementList.value,
-        ...apiAnnouncementList.value,
-    ].sort((left, right) => {
-        return getDateSortTimestamp(right._time) - getDateSortTimestamp(left._time)
-    })
-})
+const announcementList = computed(() =>
+    mergeNotificationAnnouncements(apiAnnouncementList.value, searchKeyword.value),
+)
 
 // 消息通知数据
 const notificationList = ref<NotificationItem[]>([])
@@ -296,6 +265,7 @@ async function loadMessageData() {
             notificationUnread: statsRes.data.unread,
             totalUnread: unreadSummary.value.announcementUnread + statsRes.data.unread,
         }
+        syncUnreadStats()
     } catch (err) {
         console.error('加载通知失败:', err)
     } finally {
@@ -306,14 +276,16 @@ async function loadMessageData() {
 // 切换 tab
 function switchTab(tab: 'announcement' | 'message') {
     if (activeTab.value === tab) return
+    void router.replace({ query: { ...route.query, tab } })
+}
+
+watch(() => route.query.tab, (value) => {
+    const tab = value === 'message' ? 'message' : 'announcement'
+    if (activeTab.value === tab) return
     activeTab.value = tab
     searchKeyword.value = ''
-    if (tab === 'announcement') {
-        loadAnnouncementData()
-    } else {
-        loadMessageData()
-    }
-}
+    handleSearch()
+})
 
 // 搜索
 function handleSearch() {
@@ -437,7 +409,7 @@ function formatTime(time: string) {
 }
 
 onMounted(() => {
-    loadAnnouncementData()
+    handleSearch()
 })
 </script>
 

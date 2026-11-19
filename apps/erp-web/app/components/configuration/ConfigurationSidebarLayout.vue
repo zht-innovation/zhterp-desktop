@@ -150,18 +150,21 @@
             </div>
             <div class="desktop-topbar-right">
                 <NuxtLink
-                    v-if="notificationModule"
-                    :to="notificationModule.path"
-                    class="desktop-notification-link"
-                    :class="{ active: activeModuleId === 'notification' }"
-                    :aria-label="getModuleBadgeLabel(notificationModule)"
+                    v-if="canAccessFeedback(role)"
+                    :to="mainSitePage('/configuration/feedback', mainSiteOrigin)"
+                    external
+                    class="desktop-top-action"
+                    aria-label="意见箱"
+                    title="意见箱"
                 >
-                    <Icon name="lucide:bell" />
-                    <span>消息</span>
-                    <span v-if="hasModuleBadge(notificationModule.badge)" class="desktop-unread-count">
-                        {{ typeof notificationModule.badge === 'number' ? formatModuleBadge(notificationModule.badge) : '' }}
-                    </span>
+                    <Icon name="lucide:inbox" />
+                    <span class="desktop-top-action-label">意见箱</span>
                 </NuxtLink>
+                <DesktopNotificationPopover
+                    v-if="notificationModule"
+                    :key="`${username}:${role}`"
+                    :center-path="notificationModule.path"
+                />
                 <details class="desktop-user-menu">
                     <summary aria-label="用户菜单">
                         <span class="desktop-user-avatar">{{ displayName.slice(0, 1) }}</span>
@@ -198,13 +201,16 @@ import { useId } from "vue";
 import defaultAvatar from "~/assets/avatar.jpg";
 import ErpSidebarToggleIcon from "~/components/configuration/ErpSidebarToggleIcon.vue";
 import ErpBreadcrumb from "~/components/configuration/ErpBreadcrumb.vue";
+import DesktopNotificationPopover from "~/components/configuration/DesktopNotificationPopover.vue";
 import logout from "~/utils/logout";
+import { mainSitePage } from "~/utils/mainSitePage";
 import { useApproval } from "~/composables/useApproval";
 import { useNotificationUnread } from "~/composables/useNotificationUnread";
 import { useQuickLaunchNavigation } from "~/composables/useDesktopQuickLaunch";
 import type { ErpModuleId, SidebarItem, SidebarSection } from "~/composables/useErpSidebarSections";
 import { useErpNavigationModules, type NavigationModule } from "~/composables/useErpNavigationModules";
 import { ADMIN_ROLE_NAME } from "~~/shared/enums";
+import { canAccessFeedback } from "~~/shared/utils/adminPermission";
 
 const props = withDefaults(defineProps<{
     moduleId?: ErpModuleId;
@@ -225,6 +231,7 @@ const props = withDefaults(defineProps<{
 
 const router = useRouter();
 const desktop = useRuntimeConfig().public.erpDesktop === true;
+const { mainSiteOrigin } = useRuntimeConfig().public;
 // The class is owned by this layout and removed by useHead when leaving the ERP shell.
 useHead({ htmlAttrs: { class: desktop ? 'erp-desktop-shell' : undefined } });
 const routePath = computed(() => router.currentRoute.value.path);
