@@ -188,7 +188,7 @@ pub(crate) async fn install_desktop_update(
         total_bytes: Some(downloaded_bytes),
     });
     update.install(bytes).map_err(|error| {
-        eprintln!("ERP desktop update installation failed: {error}");
+        eprintln!("ERP desktop update installation failed: {error:#?}");
         "无法安装更新，请重新检查更新或联系管理员。"
     })?;
 
@@ -218,8 +218,8 @@ fn download_error(error: Error) -> &'static str {
 fn log_network_error(operation: &str, error: Error) {
     match error {
         Error::Reqwest(error) => {
-            eprintln!("ERP desktop update {operation} failed: {}", error.without_url());
+            eprintln!("ERP desktop update {operation} failed: {:#?}", error.without_url());
         }
-        error => eprintln!("ERP desktop update {operation} failed: {error}"),
+        error => eprintln!("ERP desktop update {operation} failed: {error:#?}"),
     }
 }
