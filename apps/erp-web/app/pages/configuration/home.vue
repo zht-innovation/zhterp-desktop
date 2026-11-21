@@ -1,11 +1,7 @@
 <template>
     <main v-if="route.path === '/configuration/home'" class="workbench-page">
         <header class="page-header">
-            <div>
-                <p class="eyebrow">ERP WORKSPACE</p>
-                <h1>工作台</h1>
-                <p class="subtitle">集中查看待办事项、最新消息和业务快捷入口</p>
-            </div>
+            <h1>工作台</h1>
             <button
                 class="refresh-button"
                 type="button"
@@ -23,92 +19,85 @@
             <button type="button" @click="loadWorkbench">重试</button>
         </div>
 
-        <section class="quick-grid" aria-label="快捷入口">
-            <NuxtLink
-                v-for="entry in quickEntries"
-                :key="entry.label"
-                :to="entry.path"
-                class="quick-card"
-            >
-                <span
-                    class="quick-icon"
-                    :style="{ color: entry.color, backgroundColor: entry.background }"
-                >
-                    <Icon :name="entry.icon" />
-                </span>
-                <span class="quick-copy">
-                    <strong>{{ entry.label }}</strong>
-                    <small>{{ entry.description }}</small>
-                </span>
-                <Icon name="lucide:chevron-right" class="quick-arrow" />
-            </NuxtLink>
-        </section>
-
-        <section class="summary-grid">
-            <div v-for="summary in summaries" :key="summary.label" class="summary-card">
-                <span class="summary-label">{{ summary.label }}</span>
-                <strong>{{ summary.value }}</strong>
-                <small>{{ summary.hint }}</small>
+        <dl v-if="summaries.length" class="summary-strip" aria-label="工作台摘要">
+            <div v-for="summary in summaries" :key="summary.label" :title="summary.hint">
+                <dt>{{ summary.label }}</dt>
+                <dd>{{ summary.value }}</dd>
             </div>
-        </section>
+        </dl>
 
-        <section class="content-grid">
-            <article
-                v-for="panel in panels"
-                :key="panel.key"
-                class="panel"
-                :class="`${panel.key}-panel`"
-            >
-                <div class="panel-header">
-                    <div>
-                        <h2>{{ panel.title }}</h2>
-                        <p>{{ panel.description }}</p>
+        <div class="content-grid" :class="{ 'two-columns': panelColumns.length === 2 }">
+            <div v-for="column in panelColumns" :key="column.key" class="panel-column">
+                <section v-if="column.key === 'primary' && quickEntries.length" class="panel">
+                    <h2>快捷入口</h2>
+                    <div class="quick-grid">
+                        <NuxtLink
+                            v-for="entry in quickEntries"
+                            :key="entry.label"
+                            :to="entry.path"
+                            :title="entry.description"
+                            class="quick-card"
+                        >
+                            <Icon :name="entry.icon" class="quick-icon" />
+                            <span>{{ entry.label }}</span>
+                        </NuxtLink>
                     </div>
-                    <NuxtLink :to="panel.path">
-                        查看全部 <Icon name="lucide:arrow-up-right" />
-                    </NuxtLink>
-                </div>
+                </section>
 
-                <div v-if="panel.error" class="panel-error">
-                    <Icon name="lucide:triangle-alert" />
-                    <span>{{ panel.error }}</span>
-                    <button type="button" @click="loadWorkbench">重试</button>
-                </div>
+                <article
+                    v-for="panel in column.panels"
+                    :key="panel.key"
+                    class="panel"
+                    :class="`${panel.key}-panel`"
+                >
+                    <div class="panel-header">
+                        <h2 :title="panel.description">{{ panel.title }}</h2>
+                        <NuxtLink :to="panel.path">
+                            查看全部 <Icon name="lucide:arrow-up-right" />
+                        </NuxtLink>
+                    </div>
 
-                <div v-if="loading && !panel.items.length" class="state">加载中...</div>
-                <div v-else-if="!panel.items.length && !panel.error" class="state">
-                    <Icon :name="panel.emptyIcon" />
-                    <span>{{ panel.emptyText }}</span>
-                </div>
-                <div v-else-if="panel.items.length" class="item-list">
-                    <NuxtLink
-                        v-for="item in panel.items"
-                        :key="item.id"
-                        :to="item.path"
-                        class="list-item"
-                    >
-                        <span class="item-icon" :class="item.icon || panel.key">
-                            <Icon :name="item.iconName || panel.icon" />
-                        </span>
-                        <span class="item-main">
-                            <strong>{{ item.title }}</strong>
-                            <small>{{ item.meta }}</small>
-                            <span v-if="item.tags?.length" class="item-tags">
-                                <em
-                                    v-for="tag in item.tags"
-                                    :key="tag"
-                                    :class="tag === '待核库存' || tag === '待仓库复核' ? 'inventory-tag' : 'approved-tag'"
-                                >
-                                    {{ tag }}
-                                </em>
+                    <div v-if="panel.error" class="panel-error">
+                        <Icon name="lucide:triangle-alert" />
+                        <span>{{ panel.error }}</span>
+                        <button type="button" @click="loadWorkbench">重试</button>
+                    </div>
+
+                    <div v-if="loading && !panel.items.length" class="state">加载中...</div>
+                    <div v-else-if="!panel.items.length && !panel.error" class="state">
+                        <Icon :name="panel.emptyIcon" />
+                        <span>{{ panel.emptyText }}</span>
+                    </div>
+                    <div v-else-if="panel.items.length" class="item-list">
+                        <NuxtLink
+                            v-for="item in panel.items"
+                            :key="item.id"
+                            :to="item.path"
+                            class="list-item"
+                        >
+                            <span class="item-icon" :class="item.icon || panel.key">
+                                <Icon :name="item.iconName || panel.icon" />
                             </span>
-                        </span>
-                        <span v-if="item.unread" class="unread-dot" aria-label="未读" />
-                        <span v-if="panel.key === 'approval'" class="item-status">待处理</span>
-                    </NuxtLink>
-                </div>
-            </article>
-        </section>
+                            <span class="item-main">
+                                <strong>{{ item.title }}</strong>
+                                <small>{{ item.meta }}</small>
+                                <span v-if="item.tags?.length" class="item-tags">
+                                    <em
+                                        v-for="tag in item.tags"
+                                        :key="tag"
+                                        :class="tag === '待核库存' || tag === '待仓库复核' ? 'inventory-tag' : 'approved-tag'"
+                                    >
+                                        {{ tag }}
+                                    </em>
+                                </span>
+                            </span>
+                            <span v-if="item.unread" class="unread-dot" aria-label="未读" />
+                            <span v-if="panel.key === 'approval'" class="item-status">待处理</span>
+                        </NuxtLink>
+                    </div>
+                </article>
+            </div>
+        </div>
     </main>
     <NuxtPage v-else />
 </template>
@@ -158,8 +147,6 @@ const allQuickEntries = [
         description: "处理待审核事项",
         path: "/configuration/approval",
         icon: "lucide:clipboard-check",
-        color: "#2563eb",
-        background: "#e8f1ff",
         capability: "approval",
     },
     {
@@ -167,8 +154,6 @@ const allQuickEntries = [
         description: "查看客户与销售进展",
         path: "/configuration/sales/sale",
         icon: "lucide:briefcase-business",
-        color: "#0f766e",
-        background: "#e5f7f3",
         capability: "sales",
     },
     {
@@ -176,8 +161,6 @@ const allQuickEntries = [
         description: "跟进项目最新动态",
         path: "/configuration/sales/logs",
         icon: "lucide:file-clock",
-        color: "#c2410c",
-        background: "#fff0e6",
         capability: "sales",
     },
     {
@@ -185,8 +168,6 @@ const allQuickEntries = [
         description: "查看公告和业务通知",
         path: "/configuration/notification",
         icon: "lucide:bell",
-        color: "#7c3aed",
-        background: "#f1eaff",
         capability: "notification",
     },
 ] as const;
@@ -259,6 +240,15 @@ const panels = computed(() => {
     }
 
     return items;
+});
+
+const panelColumns = computed(() => {
+    const primary = panels.value.filter(panel => panel.key === "approval");
+    const secondary = panels.value.filter(panel => panel.key !== "approval");
+    const columns = [];
+    if (quickEntries.value.length || primary.length) columns.push({ key: "primary", panels: primary });
+    if (secondary.length) columns.push({ key: "secondary", panels: secondary });
+    return columns;
 });
 
 const toDateText = (value: unknown) => {
@@ -424,5 +414,108 @@ watch(
 </script>
 
 <style scoped>
-.workbench-page { height: 100%; padding: 28px; overflow: auto; background: #f5f7fa; color: #202122; } .page-header, .panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; } .page-header { margin-bottom: 24px; } .eyebrow { margin: 0 0 5px; color: #409eff; font-size: 12px; font-weight: 700; letter-spacing: .12em; } h1, h2, p { margin: 0; } h1 { font-size: 30px; line-height: 40px; } h2 { font-size: 19px; line-height: 27px; } .subtitle, .panel-header p { margin-top: 5px; color: #909399; font-size: 14px; } .refresh-button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 15px; border: 1px solid #dcdfe6; border-radius: 8px; color: #409eff; background: #fff; cursor: pointer; } .refresh-button:disabled { cursor: wait; opacity: .65; } .spinning { animation: spin 1s linear infinite; } .error-banner, .panel-error { display: flex; align-items: center; gap: 8px; color: #b42318; background: #fff1f2; font-size: 14px; } .error-banner { margin-bottom: 18px; padding: 11px 14px; border: 1px solid #f5c2c7; border-radius: 8px; } .panel-error { margin-top: 12px; padding: 9px 11px; border-radius: 6px; } .error-banner button, .panel-error button { margin-left: auto; border: 0; color: #b42318; background: transparent; cursor: pointer; text-decoration: underline; } .quick-grid, .summary-grid, .content-grid { display: grid; gap: 18px; } .quick-grid, .summary-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } .summary-grid { margin: 18px 0; } .quick-card, .summary-card, .panel { border-radius: 8px; background: #fff; box-shadow: 0 2px 12px rgb(0 0 0 / 3%); } .quick-card { display: flex; align-items: center; gap: 12px; padding: 17px; color: inherit; transition: transform .15s, box-shadow .15s; } .quick-card:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgb(0 0 0 / 8%); } .quick-icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 8px; font-size: 21px; } .quick-copy { min-width: 0; display: grid; gap: 3px; } .quick-copy strong { font-size: 16px; } .quick-copy small { overflow: hidden; color: #909399; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; } .quick-arrow { margin-left: auto; color: #c0c4cc; } .summary-card { display: grid; gap: 7px; padding: 18px 20px; } .summary-label { color: #606266; font-size: 14px; } .summary-card strong { color: #409eff; font-size: 30px; line-height: 34px; } .summary-card small { color: #a0a4aa; font-size: 12px; } .content-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel { min-height: 310px; padding: 20px; } .log-panel { grid-column: 1 / -1; min-height: 250px; } .panel-header { padding-bottom: 15px; border-bottom: 1px solid #f0f2f5; } .panel-header a { display: inline-flex; align-items: center; gap: 4px; color: #409eff; font-size: 13px; white-space: nowrap; } .item-list { display: grid; } .list-item { display: flex; align-items: center; gap: 11px; padding: 14px 2px; border-bottom: 1px solid #f5f6f7; color: inherit; } .list-item:last-child { border-bottom: 0; } .item-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 8px; } .item-icon.approval { color: #2563eb; background: #e8f1ff; } .item-icon.notification { color: #7c3aed; background: #f1eaff; } .item-icon.inventory { color: #b54708; background: #fff0d9; } .item-icon.log { color: #c2410c; background: #fff0e6; } .item-main { min-width: 0; display: grid; flex: 1; gap: 4px; } .item-main strong { overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; } .item-main small { color: #909399; font-size: 12px; } .item-tags { display: flex; flex-wrap: wrap; gap: 5px; } .item-tags em { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-style: normal; line-height: 16px; } .approved-tag { color: #087443; background: #dcfce7; } .inventory-tag { color: #b54708; background: #fff0d9; } .item-status { color: #e6a23c; font-size: 12px; } .unread-dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #f56c6c; } .state { min-height: 200px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: #a0a4aa; font-size: 14px; } .state :deep(svg) { width: 30px; height: 30px; color: #67c23a; } @keyframes spin { to { transform: rotate(360deg); } } @media (max-width: 1100px) { .quick-grid, .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } } @media (max-width: 760px) { .workbench-page { padding: 18px; } .quick-grid, .summary-grid, .content-grid { grid-template-columns: 1fr; } .log-panel { grid-column: auto; } }
+.workbench-page {
+    --brand: #3dabee;
+    --brand-soft: #ecf7fd;
+    --border: #e5e7eb;
+    --secondary: #73767a;
+    box-sizing: border-box;
+    height: 100%;
+    overflow: auto;
+    padding: 16px;
+    background: #f5f7fa;
+    color: #303133;
+    font-size: 13px;
+}
+.page-header, .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    margin-bottom: 12px;
+}
+h1, h2 { margin: 0; font-weight: 600; }
+h1 { font-size: 18px; }
+h2 { font-size: 15px; }
+.refresh-button, .panel-header a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--brand);
+    font-size: 13px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.refresh-button:hover, .panel-header a:hover { background: var(--brand-soft); }
+.refresh-button:disabled { opacity: .65; cursor: wait; }
+.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.summary-strip { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0 0 16px; color: var(--secondary); }
+.summary-strip > div { display: flex; align-items: baseline; gap: 6px; }
+.summary-strip dd { margin: 0; color: #303133; font-weight: 600; }
+.content-grid, .panel-column { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 16px; }
+.content-grid.two-columns { grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr); }
+.panel { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.quick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 72px), 80px));
+    gap: 8px;
+    margin-top: 12px;
+}
+.quick-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
+    aspect-ratio: 1;
+    padding: 5px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: inherit;
+    text-decoration: none;
+    font-size: 12px;
+}
+.quick-icon { width: 24px; height: 24px; color: var(--brand); }
+.quick-card:hover, .quick-card:focus-visible { background: var(--brand-soft); border-color: var(--brand); }
+
+.list-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: inherit; text-decoration: none; }
+.list-item + .list-item { border-top: 1px solid var(--border); }
+.list-item:hover, .list-item:focus-visible { background: var(--brand-soft); }
+.item-icon { display: inline-flex; flex: none; color: var(--secondary); }
+.item-icon.inventory { color: #ad7116; }
+.item-main { display: grid; flex: 1; min-width: 0; gap: 3px; overflow-wrap: anywhere; }
+.item-main strong { font-weight: 500; }
+.item-main small, .state { font-size: 12px; color: var(--secondary); }
+.approval-panel .list-item { padding-block: 6px; }
+.log-panel .list-item { background: var(--brand-soft); border-radius: 6px; }
+.log-panel .list-item + .list-item { margin-top: 8px; border: 0; }
+.log-panel .list-item:hover { background: #d8eefc; }
+.item-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.item-tags em, .item-status { padding: 2px 7px; border-radius: 10px; font-size: 12px; font-style: normal; }
+.approved-tag { color: #21865c; background: #edf8f1; }
+.inventory-tag, .item-status { color: #8a4408; background: #fff0de; }
+.unread-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #e15b64; }
+.state { display: flex; align-items: center; gap: 6px; }
+.error-banner, .panel-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    color: #b42318;
+    background: #fff1f2;
+}
+.error-banner button, .panel-error button { margin-left: auto; border: 0; color: inherit; background: transparent; text-decoration: underline; cursor: pointer; }
+@media (max-width: 900px) {
+    .content-grid.two-columns { grid-template-columns: minmax(0, 1fr); }
+}
 </style>
