@@ -423,3 +423,22 @@ export const canAccessConfigurationPath = (role: number, path: string) => {
 
 export const isReadonlyProductionRole = (role: number) =>
     role === ADMIN_ROLE.PRODUCTION_MANAGER;
+
+export const DESKTOP_ERP_ACCESS_DENIED = "当前账号无 ERP 登录权限";
+
+export function getDesktopErpLandingPath(value: unknown): string | null {
+    // 旧账号的角色可能存为字符串，空值不能转换为角色 0。
+    if (typeof value !== "number" && typeof value !== "string") return null;
+    if (!Object.hasOwn(ADMIN_ROLE_NAME, value)) return null;
+    const role = Number(value);
+    if (!canAccessErp(role)) return null;
+
+    const home = "/configuration/home";
+    if (canAccessConfigurationPath(role, home)) return home;
+
+    const inventory = getInventoryModuleLandingPath(role);
+    if (canAccessInventory(role) && canAccessConfigurationPath(role, inventory)) {
+        return inventory + "?type=inventory";
+    }
+    return null;
+}

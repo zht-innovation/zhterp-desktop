@@ -13,12 +13,31 @@ import {
     canSubmitBorrowRequest,
     canViewProductionRequisitions,
     canWarehouseKeeperAccessConfigurationPath,
+    getDesktopErpLandingPath,
     getHomeWorkbenchCapabilities,
     getInventoryModuleLandingPath,
     hasFullInventoryAccess,
     isOperatorInventoryReadonly,
     isSellerInventoryReadonly,
 } from "./adminPermission";
+
+describe("desktop ERP login", () => {
+    it("opens the workbench for permitted accounts, including stored string roles", () => {
+        expect(getDesktopErpLandingPath(ADMIN_ROLE.SUPER)).toBe("/configuration/home");
+        expect(getDesktopErpLandingPath(String(ADMIN_ROLE.ORDINARY_USER))).toBe("/configuration/home");
+    });
+
+    it("opens the permitted inventory page for the electronics warehouse keeper", () => {
+        expect(getDesktopErpLandingPath(ADMIN_ROLE.ELECTRONICS_WAREHOUSE_KEEPER))
+            .toBe(getInventoryModuleLandingPath(ADMIN_ROLE.ELECTRONICS_WAREHOUSE_KEEPER) + "?type=inventory");
+    });
+
+    it("denies non-ERP accounts and invalid roles", () => {
+        for (const role of [ADMIN_ROLE.CONTENT_MANAGER, ADMIN_ROLE.DEVELOPER, undefined, null, "", " ", false, -1, 999]) {
+            expect(getDesktopErpLandingPath(role)).toBeNull();
+        }
+    });
+});
 
 describe("seller production overview permissions", () => {
     it("opens only the exact production overview page", () => {

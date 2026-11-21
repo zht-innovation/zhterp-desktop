@@ -4,6 +4,7 @@ import { useAdminModel } from "~~/server/models/admin.model"
 import { signAdminToken } from "~~/server/services/adminToken"
 import { logger } from "~~/server/utils/logger"
 import { getCurrentDepartments } from "~~/server/services/department"
+import { DESKTOP_ERP_ACCESS_DENIED, getDesktopErpLandingPath } from "~~/shared/utils/adminPermission"
 
 export default defineEventHandler(async (event) => {
     try {
@@ -37,6 +38,13 @@ export default defineEventHandler(async (event) => {
                 code: CODE.WRONG_PASSWORD,
                 msg: codeToMsg[CODE.WRONG_PASSWORD]
             }
+        }
+
+        // 原生桌面客户端的 HTTP transport 已统一设置此标识。
+        if (getRequestHeader(event, "user-agent")?.startsWith("ZHT-ERP-Desktop/")
+            && !getDesktopErpLandingPath(existingUser.role)) {
+            setResponseStatus(event, 403)
+            return { code: 403, msg: DESKTOP_ERP_ACCESS_DENIED, data: null }
         }
 
         let token;

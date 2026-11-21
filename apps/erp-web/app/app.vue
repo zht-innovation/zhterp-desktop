@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { getToken, verifyDesktopSession } from "~/utils/auth";
+import { desktopLoginTarget, getToken, verifyDesktopSession } from "~/utils/auth";
 import { desktopReady, initializeDesktop, isDesktop } from "~/utils/desktop";
 import {
     PRIVATE_PAGE_ROBOTS_CONTENT,
@@ -89,10 +89,9 @@ async function checkDesktopConnection(probe: boolean) {
             if (!ready) return;
         }
         const wasSignedIn = Boolean(nuxtApp.runWithContext(getToken));
-        const restored = await nuxtApp.runWithContext(() => verifyDesktopSession(probe));
-        if (restored && route.path === "/admin") {
-            const redirect = String(route.query.redirect || "");
-            await router.push(redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/configuration");
+        const landingPath = await nuxtApp.runWithContext(() => verifyDesktopSession(probe));
+        if (landingPath && route.path === "/admin") {
+            await router.replace(desktopLoginTarget(landingPath, route.query.redirect));
         } else if (wasSignedIn && !nuxtApp.runWithContext(getToken) && route.path.startsWith("/configuration")) {
             await router.push({ path: "/admin", query: { redirect: route.fullPath } });
         }

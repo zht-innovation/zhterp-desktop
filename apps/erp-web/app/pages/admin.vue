@@ -51,7 +51,8 @@ import { ref, reactive } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import { Avatar, Key } from "@element-plus/icons-vue"
 import { adminLogin } from "~/composables/api/useAdminApi"
-import { cancelDesktopSessionRestore, persistDesktopSession, setToken } from "~/utils/auth"
+import { cancelDesktopSessionRestore, desktopLoginTarget, persistDesktopSession, setToken } from "~/utils/auth"
+import { DESKTOP_ERP_ACCESS_DENIED, getDesktopErpLandingPath } from "~~/shared/utils/adminPermission"
 import { isDesktop } from "~/utils/desktop"
 
 definePageMeta({
@@ -101,18 +102,30 @@ const onSubmit = async () => {
             return
         }
 
-        if (isDesktop()) cancelDesktopSessionRestore()
+        const desktop = isDesktop()
+        if (desktop) cancelDesktopSessionRestore()
         const res = await adminLogin()(loginForm.user, loginForm.password)
         if (res?.code != 200 || !res.data?.token) {
             ElMessage.error(res?.msg || "登录失败，请重试")
             return
         }
 
-        nuxtApp.runWithContext(() => setToken(res.data.token))
-        if (isDesktop() && !(await persistDesktopSession(res.data.token))) {
-            ElMessage.warning("无法保存登录状态，下次启动需重新登录")
+        const token = res.data.token
+        if (desktop) {
+            const landingPath = getDesktopErpLandingPath(res.data.user?.role)
+            if (!landingPath) {
+                ElMessage.error(DESKTOP_ERP_ACCESS_DENIED)
+                return
+            }
+            nuxtApp.runWithContext(() => setToken(token))
+            if (!(await persistDesktopSession(token))) {
+                ElMessage.warning("无法保存登录状态，下次启动需重新登录")
+            }
+            await router.replace(desktopLoginTarget(landingPath, route.query.redirect))
+            return
         }
 
+        nuxtApp.runWithContext(() => setToken(token))
         const redirect = String(route.query.redirect || '')
         if (redirect.startsWith('/') && !redirect.startsWith('//')) {
             await router.push(redirect)
