@@ -44,6 +44,14 @@ export type LogModifyPayload = {
     attachments?: File[]
 }
 
+export interface SalesProjectLog extends Omit<LogPayload, 'logDate' | 'attachments'> {
+    _id: string
+    logDate?: string
+    attachments?: Array<string | { path?: string; originalName?: string; name?: string }>
+    salesperson?: { name?: string; nameCn?: string; avatar?: string } | null
+    customer?: { name?: string; company?: string; id?: string } | null
+}
+
 export function submitLog() {
     return (payload: LogPayload | FormData) =>
         $fetch('/log/submit', {
@@ -57,7 +65,7 @@ export function submitLog() {
 
 export function retrieveLogList() {
     return (params?: { salespersonId?: string; customerId?: string }) =>
-        $fetch('/log/retrieve', {
+        $fetch<{ code: number; data: { logs: SalesProjectLog[] } }>('/log/retrieve', {
             method: 'GET',
             headers: {
                 Token: getToken() || '',

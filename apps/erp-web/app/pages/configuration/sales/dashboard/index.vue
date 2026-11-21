@@ -51,7 +51,7 @@
             </el-col>
 
             <!-- 2. 最新信息 -->
-            <el-col :span="5">
+            <el-col :span="11">
                 <div class="card-box full-height">
                     <div class="card-header">
                         <h3>最新信息</h3>
@@ -85,50 +85,6 @@
                 </div>
             </el-col>
 
-            <!-- 3. 项目日志 -->
-            <el-col :span="6">
-                <div class="card-box full-height">
-                    <div class="card-header">
-                        <h3>项目日志</h3>
-                        <NuxtLink class="link" to="/configuration/sales/logs">查看全部 ></NuxtLink>
-                    </div>
-                    <div class="log-list">
-                        <div v-for="log in displayedLogs" :key="log.id" class="log-item">
-                            <div class="log-user">
-                                <el-avatar
-                                    class="avatar"
-                                    :size="30"
-                                    :src="resolveErpImageUrl(log.avatar || undefined)"
-                                    style="background:#fde2e2; color:#f56c6c;"
-                                >
-                                    {{ getNameInitial(log.salesperson) }}
-                                </el-avatar>
-                                <div class="user-info">
-                                    <div class="u-name">{{ log.salesperson || '未知' }}</div>
-                                    <div class="u-region">{{ log.customer || '-' }}</div>
-                                </div>
-                            </div>
-                            <div class="log-box">
-                                <Icon name="material-symbols:description" class="icon-file"/>
-                                <div class="log-text">{{ log.subject || log.content || '无内容' }}</div>
-                                <el-button size="small" round class="detail-btn" @click="openLogDetail(log)">
-                                    <Icon name="material-symbols:arrow-circle-right-outline" />
-                                    详细查看
-                                </el-button>
-                            </div>
-                        </div>
-                        <div v-if="projectLogs.length === 0" class="empty-tip">
-                            暂无日志
-                        </div>
-                        <div v-if="hasMoreLogs" class="more-indicator">
-                            <span class="dots">...</span>
-                            <NuxtLink to="/configuration/sales/logs" class="more-text">
-                                还有 {{ remainingLogsCount }} 条日志
-                            </NuxtLink>
-                        </div>
-                    </div>
-                </div>
-            </el-col>
         </el-row>
 
         <!-- 底部内容区 -->
@@ -416,98 +372,6 @@
     }
 }
 
-// 项目日志 List
-.log-list {
-    .log-item {
-        margin-bottom: 20px;
-
-        .log-user {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 6%;
-
-            .avatar {
-                width: 35px;
-                height: 35px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            }
-
-            .user-info {
-                .u-name {
-                    font-size: 18px;
-                    font-weight: 600;
-                }
-
-                .u-region {
-                    font-size: 16px;
-                    color: #909399;
-                }
-            }
-        }
-
-        .log-box {
-            background: #f4f6f8;
-            padding: 10px;
-            border-radius: 8px;
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            align-items: center;
-
-            .icon-file {
-                color: #409eff;
-                margin-top: 2px;
-                font-size: 24px;
-                flex-shrink: 0;
-            }
-
-            .log-text {
-                font-size: 18px;
-                color: #606266;
-                line-height: 1.6;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                display: -webkit-box;
-                -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical;
-                flex: 1;
-            }
-        }
-    }
-
-    .empty-tip {
-        text-align: center;
-        padding: 40px 0;
-        color: #909399;
-        font-size: 14px;
-    }
-
-    .more-indicator {
-        text-align: center;
-        padding: 10px 0;
-        
-        .dots {
-            font-size: 24px;
-            color: #909399;
-            letter-spacing: 4px;
-            display: block;
-            margin-bottom: 8px;
-        }
-        
-        .more-text {
-            font-size: 16px;
-            color: #409eff;
-            text-decoration: none;
-            
-            &:hover {
-                text-decoration: underline;
-            }
-        }
-    }
-}
 
 .bottom-section {
     .title {
@@ -831,46 +695,6 @@ const hasMoreNews = computed(() => latestNews.value.length > 3)
 // 剩余消息数量
 const remainingNewsCount = computed(() => Math.max(0, latestNews.value.length - 3))
 
-// 4. 项目日志
-const projectLogs = ref<any[]>([])
-
-// 获取项目日志
-const fetchProjectLogs = async () => {
-    try {
-        const res: any = await retrieveLogList()({})
-        
-        if (res?.data?.logs) {
-            projectLogs.value = res.data.logs.map((log: any) => ({
-                id: log._id,
-                salesperson: log.salesperson?.name || '未知',
-                avatar: log.salesperson?.avatar || '',
-                customer: log.customer?.id || '-',
-                customerInfo: log.customer?.id || '未知客户',
-                subject: log.subject || '',
-                content: log.content || '',
-                logDate: log.logDate ? new Date(log.logDate).toISOString().split('T')[0] : '',
-                followUpMethod: log.followUpMethod,
-                currentStage: log.currentStage,
-                feedbackAttitude: log.feedbackAttitude,
-                followUpResult: log.followUpResult,
-                logContent: log.content,
-                attachments: log.attachments || [],
-                date: log.logDate
-            }))
-        }
-    } catch (error) {
-        console.error('获取项目日志失败:', error)
-    }
-}
-
-// 只显示前3条日志
-const displayedLogs = computed(() => projectLogs.value.slice(0, 2))
-
-// 是否有更多日志
-const hasMoreLogs = computed(() => projectLogs.value.length > 3)
-
-// 剩余日志数量
-const remainingLogsCount = computed(() => Math.max(0, projectLogs.value.length - 3))
 
 const openLatestDetail = (item: any) => {
     if (item.type === 'log') {
@@ -900,10 +724,6 @@ const openCustomerDetail = (item: any) => {
     
 }
 
-const openLogDetail = (item: any) => {
-    currentLog.value = item
-    showLogModal.value = true
-}
 
 // 5. 客户总览 (圆形进度条数据)
 const clientStats = ref([
@@ -989,6 +809,5 @@ onMounted(() => {
     fetchSalespeople()
     fetchApplications()
     fetchCustomerStats()
-    fetchProjectLogs()
 })
 </script>

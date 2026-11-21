@@ -67,7 +67,7 @@ impl Transport {
             else {
                 return Err(io::Error::other("invalid desktop ERP route map").into());
             };
-            if !matches!(owner, "api;" | "account;") {
+            if !matches!(owner, "api;" | "account;" | "main;") {
                 return Err(io::Error::other("invalid desktop ERP route owner").into());
             }
             routes.push(pattern);

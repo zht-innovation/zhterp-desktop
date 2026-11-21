@@ -48,8 +48,13 @@ for (const file of await filesUnder(resolve(root, "apps/erp-api/server/routes"))
     api.set(method + " " + path, owner);
 }
 
+// These routes are served by the main site's existing feedback service.
+api.set("GET /feedback/retrieve", "main");
+api.set("PUT /feedback/follow", "main");
+api.set("DELETE /feedback/follow", "main");
 const standby = JSON.parse(await readFile(resolve(root, "apps/erp-api/standby-routes.json"), "utf8"));
 const safeReads = new Set(standby);
+safeReads.add("GET /feedback/retrieve");
 for (const key of safeReads) {
     if (!api.has(key)) throw new Error("Unknown standby endpoint: " + key);
 }

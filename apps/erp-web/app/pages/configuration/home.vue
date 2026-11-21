@@ -96,6 +96,13 @@
                         </NuxtLink>
                     </div>
                 </article>
+                <template v-if="column.key === 'secondary' && isRoleReady && username">
+                    <HomeProjectLogs v-if="capabilities.projectLogs" :key="username" class="panel"
+                        :logs="logs" :loading="loading" :error="logError" @retry="loadWorkbench" />
+                    <HomePersonalCalendar :key="'calendar-' + username" class="panel" :username="username" />
+                    <HomeFeedbackSquare v-if="canAccessFeedback(role)" :key="'feedback-' + username + '-' + role"
+                        class="panel" :refresh-key="refreshKey" />
+                </template>
             </div>
         </div>
     </main>
@@ -105,12 +112,13 @@
 <script setup lang="ts">
 import { retrieveApprovals } from "~/composables/api/useApprovalApi";
 import { retrieveApplicationList } from "~/composables/api/useAppApi";
-import { retrieveLogList } from "~/composables/api/useLogApi";
+import { retrieveLogList, type SalesProjectLog } from "~/composables/api/useLogApi";
 import {
     getNotificationStats,
     retrieveNotifications,
 } from "~/composables/api/useNotificationApi";
-import { getHomeWorkbenchCapabilities } from "~~/shared/utils/adminPermission";
+import { canAccessFeedback, getHomeWorkbenchCapabilities } from "~~/shared/utils/adminPermission";
+import { ADMIN_ROLE } from "~~/shared/enums";
 import { resolveInventoryCheckPath } from "~/utils/inventory/orderCheckNotification";
 
 definePageMeta({ layout: "home" });
@@ -128,16 +136,24 @@ type WorkItem = {
 
 const route = useRoute();
 const adminInfo = useState<any>("admin_info", () => ({}));
-const role = computed(() => Number(adminInfo.value?.role));
+const role = computed(() => {
+    const value = adminInfo.value?.role;
+    return value == null || value === "" ? NaN : Number(value);
+});
 const username = computed(() => String(adminInfo.value?.username || ""));
 const isRoleReady = computed(() => Number.isInteger(role.value));
-const capabilities = computed(() => getHomeWorkbenchCapabilities(role.value));
+const capabilities = computed(() => ({
+    ...getHomeWorkbenchCapabilities(role.value),
+    projectLogs: role.value === ADMIN_ROLE.SUPER && Boolean(username.value),
+}));
 const loading = ref(false);
 const errorMessage = ref("");
 const notificationError = ref("");
 const approvals = ref<WorkItem[]>([]);
 const notifications = ref<WorkItem[]>([]);
-const logs = ref<WorkItem[]>([]);
+const logs = ref<SalesProjectLog[]>([]);
+const logError = ref("");
+const refreshKey = ref(0);
 const applicationCount = ref(0);
 const unreadCount = ref(0);
 
@@ -161,7 +177,7 @@ const allQuickEntries = [
         description: "跟进项目最新动态",
         path: "/configuration/sales/logs",
         icon: "lucide:file-clock",
-        capability: "sales",
+        capability: "projectLogs",
     },
     {
         label: "通知中心",
@@ -188,8 +204,8 @@ const summaries = computed(() => {
     if (capabilities.value.notification) {
         items.push({ label: "未读通知", value: unreadCount.value, hint: "条待查看消息" });
     }
-    if (capabilities.value.sales) {
-        items.push({ label: "项目动态", value: logs.value.length, hint: "条最新日志" });
+    if (capabilities.value.projectLogs) {
+        items.push({ label: "项目动态", value: logs.value.length, hint: "条项目日志" });
     }
 
     return items;
@@ -225,20 +241,6 @@ const panels = computed(() => {
         });
     }
 
-    if (capabilities.value.sales) {
-        items.push({
-            key: "log",
-            title: "最近动态",
-            description: "销售跟进与项目日志",
-            path: "/configuration/sales/logs",
-            icon: "lucide:file-text",
-            emptyIcon: "lucide:inbox",
-            emptyText: "暂无项目动态",
-            error: "",
-            items: logs.value,
-        });
-    }
-
     return items;
 });
 
@@ -247,7 +249,7 @@ const panelColumns = computed(() => {
     const secondary = panels.value.filter(panel => panel.key !== "approval");
     const columns = [];
     if (quickEntries.value.length || primary.length) columns.push({ key: "primary", panels: primary });
-    if (secondary.length) columns.push({ key: "secondary", panels: secondary });
+    if (isRoleReady.value && username.value) columns.push({ key: "secondary", panels: secondary });
     return columns;
 });
 
@@ -269,6 +271,7 @@ const resetWorkbenchState = () => {
     approvals.value = [];
     notifications.value = [];
     logs.value = [];
+    logError.value = "";
     applicationCount.value = 0;
     unreadCount.value = 0;
     errorMessage.value = "";
@@ -276,8 +279,9 @@ const resetWorkbenchState = () => {
 };
 
 const loadWorkbench = async () => {
-    if (!isRoleReady.value) return;
+    if (!isRoleReady.value || !username.value || route.path !== "/configuration/home") return;
 
+    refreshKey.value++;
     const requestId = ++workbenchRequestId;
     const currentCapabilities = capabilities.value;
     loading.value = true;
@@ -309,7 +313,7 @@ const loadWorkbench = async () => {
     const salesRequest = currentCapabilities.sales
         ? Promise.allSettled([
             retrieveApplicationList()(),
-            retrieveLogList()({}),
+            currentCapabilities.projectLogs ? retrieveLogList()() : Promise.resolve(null),
         ])
         : Promise.resolve(null);
     const [approvalResults, notificationResults, salesResults] = await Promise.all([
@@ -375,16 +379,13 @@ const loadWorkbench = async () => {
             failures.push("申请");
         }
 
-        if (logResult.status === "fulfilled") {
-            const items = (logResult.value as any)?.data?.logs ?? [];
-            logs.value = items.slice(0, 5).map((item: any) => ({
-                id: item._id,
-                title: item.subject || item.content || "项目跟进日志",
-                meta: `${item.salesperson?.nameCn || item.salesperson?.name || "未知销售"} · ${toDateText(item._createDate || item.logDate)}`,
-                path: "/configuration/sales/logs",
-            }));
-        } else {
-            failures.push("日志");
+        if (currentCapabilities.projectLogs) {
+            if (logResult.status === "fulfilled") {
+                logs.value = logResult.value?.data?.logs ?? [];
+                logError.value = "";
+            } else {
+                logError.value = "项目日志加载失败";
+            }
         }
     }
 
@@ -395,19 +396,12 @@ const loadWorkbench = async () => {
 };
 
 watch(
-    [role, username],
-    ([currentRole, currentUsername], [previousRole, previousUsername]) => {
-        if (
-            Number.isInteger(currentRole)
-            && (
-                currentRole !== previousRole
-                || currentUsername !== previousUsername
-            )
-        ) {
-            workbenchRequestId += 1;
-            resetWorkbenchState();
-            void loadWorkbench();
-        }
+    [role, username, () => route.path],
+    () => {
+        workbenchRequestId++;
+        resetWorkbenchState();
+        loading.value = false;
+        void loadWorkbench();
     },
     { immediate: true },
 );
@@ -495,9 +489,10 @@ h2 { font-size: 15px; }
 .item-main strong { font-weight: 500; }
 .item-main small, .state { font-size: 12px; color: var(--secondary); }
 .approval-panel .list-item { padding-block: 6px; }
-.log-panel .list-item { background: var(--brand-soft); border-radius: 6px; }
-.log-panel .list-item + .list-item { margin-top: 8px; border: 0; }
-.log-panel .list-item:hover { background: #d8eefc; }
+.panel :deep(.home-card-header) { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.panel :deep(.home-card-header h2) { margin: 0; font-size: 15px; font-weight: 600; }
+.panel :deep(.home-action) { color: var(--brand); background: transparent; border: 0; cursor: pointer; font: inherit; text-decoration: none; }
+.panel :deep(.home-card-note) { color: var(--secondary); font-size: 12px; }
 .item-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .item-tags em, .item-status { padding: 2px 7px; border-radius: 10px; font-size: 12px; font-style: normal; }
 .approved-tag { color: #21865c; background: #edf8f1; }

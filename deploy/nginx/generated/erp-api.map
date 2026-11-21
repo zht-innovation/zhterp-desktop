@@ -177,3 +177,6 @@
 "~^GET:/salesperson/retrieve/?$" api;
 "~^GET:/salesperson/search/?$" api;
 "~^PUT:/salesperson/update/?$" api;
+"~^GET:/feedback/retrieve/?$" main;
+"~^PUT:/feedback/follow/?$" main;
+"~^DELETE:/feedback/follow/?$" main;

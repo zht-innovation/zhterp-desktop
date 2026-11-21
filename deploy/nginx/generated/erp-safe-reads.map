@@ -5,3 +5,4 @@
 "~^GET:/inventory/stock/retrieve/?$" 1;
 "~^GET:/notification/retrieve/?$" 1;
 "~^GET:/sales-order/retrieve/?$" 1;
+"~^GET:/feedback/retrieve/?$" 1;
