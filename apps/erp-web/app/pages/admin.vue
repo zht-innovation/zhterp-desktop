@@ -2,7 +2,7 @@
     <div :class="desktopLogin ? 'desktop-login' : 'root'">
         <template v-if="desktopLogin">
             <div class="drone-backdrop" aria-hidden="true">
-                <svg viewBox="222 413 957 1113" focusable="false">
+                <svg viewBox="222 413 957 1113" preserveAspectRatio="xMidYMid slice" focusable="false">
                     <image :href="droneImage" width="1401" height="1601" />
                 </svg>
             </div>
@@ -205,8 +205,6 @@ const onSubmit = async () => {
     position: absolute;
     inset: 0;
     z-index: -1;
-    display: grid;
-    place-content: center;
     overflow: hidden;
     pointer-events: none;
 }
@@ -220,8 +218,9 @@ const onSubmit = async () => {
     mask-image: radial-gradient(ellipse, black, transparent 74%);
 }
 .drone-backdrop svg {
-    width: min(97vw, 1440px);
-    height: clamp(500px, 106vh, 1360px);
+    display: block;
+    width: 100%;
+    height: 100%;
     mix-blend-mode: multiply;
     opacity: .45;
 }
@@ -270,9 +269,9 @@ const onSubmit = async () => {
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .desktop-login .login-wrapper {
-        background: linear-gradient(148deg, #f9fdff8c, #e6f2ff5c 57%, #e0edfd7a);
-        -webkit-backdrop-filter: blur(12px) saturate(128%);
-        backdrop-filter: blur(12px) saturate(128%);
+        background: linear-gradient(148deg, rgb(249 253 255 / 34%), rgb(230 242 255 / 22%) 57%, rgb(224 237 253 / 30%));
+        -webkit-backdrop-filter: blur(4px) saturate(128%);
+        backdrop-filter: blur(4px) saturate(128%);
     }
 }
 .desktop-login h1 {
