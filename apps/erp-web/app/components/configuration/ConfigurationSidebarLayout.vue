@@ -149,17 +149,23 @@
                 <ErpBreadcrumb icon="lucide:folder" :items="desktopBreadcrumbItems" />
             </div>
             <div class="desktop-topbar-right">
-                <NuxtLink
+                <button
                     v-if="canAccessFeedback(role)"
-                    :to="mainSitePage('/configuration/feedback', mainSiteOrigin)"
-                    external
+                    type="button"
+                    aria-haspopup="dialog"
+                    @click="feedbackOpen = true"
                     class="desktop-top-action"
                     aria-label="意见箱"
                     title="意见箱"
                 >
                     <Icon name="lucide:inbox" />
                     <span class="desktop-top-action-label">意见箱</span>
-                </NuxtLink>
+                </button>
+                <FeedbackSubmitDialog
+                    v-if="feedbackOpen && canAccessFeedback(role)"
+                    :submitter="displayName"
+                    @close="feedbackOpen = false"
+                />
                 <DesktopNotificationPopover
                     v-if="notificationModule"
                     :key="`${username}:${role}`"
@@ -203,7 +209,7 @@ import ErpSidebarToggleIcon from "~/components/configuration/ErpSidebarToggleIco
 import ErpBreadcrumb from "~/components/configuration/ErpBreadcrumb.vue";
 import DesktopNotificationPopover from "~/components/configuration/DesktopNotificationPopover.vue";
 import logout from "~/utils/logout";
-import { mainSitePage } from "~/utils/mainSitePage";
+import FeedbackSubmitDialog from "~/components/configuration/FeedbackSubmitDialog.vue";
 import { useApproval } from "~/composables/useApproval";
 import { useNotificationUnread } from "~/composables/useNotificationUnread";
 import { useQuickLaunchNavigation } from "~/composables/useDesktopQuickLaunch";
@@ -231,7 +237,7 @@ const props = withDefaults(defineProps<{
 
 const router = useRouter();
 const desktop = useRuntimeConfig().public.erpDesktop === true;
-const { mainSiteOrigin } = useRuntimeConfig().public;
+const feedbackOpen = ref(false);
 // The class is owned by this layout and removed by useHead when leaving the ERP shell.
 useHead({ htmlAttrs: { class: desktop ? 'erp-desktop-shell' : undefined } });
 const routePath = computed(() => router.currentRoute.value.path);
@@ -254,6 +260,7 @@ const {
 
 const role = computed(() => Number(adminInfo.value?.role));
 const username = computed(() => String(adminInfo.value?.username || ""));
+watch([username, role], () => { feedbackOpen.value = false; });
 const displayName = computed(() => String(adminInfo.value?.nickname || username.value || "未知用户"));
 const displayRoleName = computed(() => ADMIN_ROLE_NAME[role.value] || "未知角色");
 setNotificationAccountContext(username.value);

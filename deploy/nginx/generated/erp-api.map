@@ -177,6 +177,7 @@
 "~^GET:/salesperson/retrieve/?$" api;
 "~^GET:/salesperson/search/?$" api;
 "~^PUT:/salesperson/update/?$" api;
+"~^POST:/feedback/add/?$" main;
 "~^GET:/feedback/retrieve/?$" main;
 "~^PUT:/feedback/follow/?$" main;
 "~^DELETE:/feedback/follow/?$" main;

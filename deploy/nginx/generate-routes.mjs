@@ -49,6 +49,7 @@ for (const file of await filesUnder(resolve(root, "apps/erp-api/server/routes"))
 }
 
 // These routes are served by the main site's existing feedback service.
+api.set("POST /feedback/add", "main");
 api.set("GET /feedback/retrieve", "main");
 api.set("PUT /feedback/follow", "main");
 api.set("DELETE /feedback/follow", "main");
