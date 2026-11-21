@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod desktop_lifecycle;
+#[cfg(target_os = "windows")]
+mod desktop_menu_bar;
 mod desktop_business_windows;
 mod desktop_downloads;
 mod desktop_print;
@@ -288,6 +290,10 @@ fn main() {
             let window = window.disable_drag_drop_handler();
 
             let window = window.build()?;
+            #[cfg(target_os = "windows")]
+            if let Ok(hwnd) = window.hwnd() {
+                desktop_menu_bar::install(windows::Win32::Foundation::HWND(hwnd.0));
+            }
             desktop_window_state::restore(&window);
             #[cfg(target_os = "windows")]
             if let Err(error) = desktop_notification_popup::setup(app.handle()) {
