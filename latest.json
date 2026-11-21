@@ -1,17 +1,17 @@
 {
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScGswWWNvTmNpY2RzYnhPdFp6TXIwSmNLaWZKUFVPSW5TL1g4NHV2bDQ3VnQzVVZFUzNQYmZPcngzQXovMUxTeGo0L2tqNENIWUdYeXVqSXFSOFhLS2tjUzhOVHhNNGdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1MjUwNTY2CWZpbGU6WkhUIEVSUCDpooTlj5EuYXBwLnRhci5negl2ZXJzaW9uOjAuMi4zCkJYQUNIdE12cGNQa21GbE1KbXJZQ3cybHVDa2FyRU1NWkRiT1Z4M0hIMkVGbFMyT1dwbW5NSkVPeXBjbjZRQnNkV1Nxb0c1OHdqSzlncEF4OHNaR0JBPT0K",
-      "url": "https://github.com/zht-innovation/zhterp-desktop/releases/download/desktop-preview-v0.2.3/zh-erp-macos-universal.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScGswWWNvTmNpY1ZFVFdGZVQ2ZXlwMk5TeVh4QmJlWmtYQnlxaVM3ZVF2UXczdmlBQjlJak1taWNQMUxkcEh5bW1Uek5LQ2p5YnVKKy91cHNYRktWaVIvS2JOalRGTmd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1MjUxODE0CWZpbGU6WkhUIEVSUCDpooTlj5EuYXBwLnRhci5negl2ZXJzaW9uOjAuMi40ClVTeWJNdkluRTZPbjdnRy9KWE9UUklPSDR5dUV5N0QvUE1hdU5wblIvaC9BbVpnZ0NieHczY2phT2kvUjR5b1VybFNkS1hJNHl2NzZmeXZRQ3kvQkRBPT0K",
+      "url": "https://github.com/zht-innovation/zhterp-desktop/releases/download/desktop-preview-v0.2.4/zh-erp-macos-universal.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScGswWWNvTmNpY2RzYnhPdFp6TXIwSmNLaWZKUFVPSW5TL1g4NHV2bDQ3VnQzVVZFUzNQYmZPcngzQXovMUxTeGo0L2tqNENIWUdYeXVqSXFSOFhLS2tjUzhOVHhNNGdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1MjUwNTY2CWZpbGU6WkhUIEVSUCDpooTlj5EuYXBwLnRhci5negl2ZXJzaW9uOjAuMi4zCkJYQUNIdE12cGNQa21GbE1KbXJZQ3cybHVDa2FyRU1NWkRiT1Z4M0hIMkVGbFMyT1dwbW5NSkVPeXBjbjZRQnNkV1Nxb0c1OHdqSzlncEF4OHNaR0JBPT0K",
-      "url": "https://github.com/zht-innovation/zhterp-desktop/releases/download/desktop-preview-v0.2.3/zh-erp-macos-universal.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScGswWWNvTmNpY1ZFVFdGZVQ2ZXlwMk5TeVh4QmJlWmtYQnlxaVM3ZVF2UXczdmlBQjlJak1taWNQMUxkcEh5bW1Uek5LQ2p5YnVKKy91cHNYRktWaVIvS2JOalRGTmd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1MjUxODE0CWZpbGU6WkhUIEVSUCDpooTlj5EuYXBwLnRhci5negl2ZXJzaW9uOjAuMi40ClVTeWJNdkluRTZPbjdnRy9KWE9UUklPSDR5dUV5N0QvUE1hdU5wblIvaC9BbVpnZ0NieHczY2phT2kvUjR5b1VybFNkS1hJNHl2NzZmeXZRQ3kvQkRBPT0K",
+      "url": "https://github.com/zht-innovation/zhterp-desktop/releases/download/desktop-preview-v0.2.4/zh-erp-macos-universal.app.tar.gz"
     },
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScGswWWNvTmNpY1NFZXBTVUxnbGQ2T24rTmczOExDQXFYWk1uZ2s5aWNnejFnWFVoVXNtV3pjRUd3VkNLUGoyQU5wSCtzLzlGbzE1Qk1XaU1NMWFyQjlBN3czS3lNdmc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1MjUwMTQ1CWZpbGU6WkhUIEVSUCDpooTlj5FfMC4yLjNfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMi4zCkozajNBcmxsQmtpMnhVUXhVZWY4OTdLcjRVN3V4UGFaTE0vYkkxMHVyYmZzemJQMElSVGxVY2MyS3p1NjlkdjVuV2I5ZTIzLzlSalBaMU9NN0RkS0NnPT0K",
-      "url": "https://github.com/zht-innovation/zhterp-desktop/releases/download/desktop-preview-v0.2.3/zh-erp-windows-x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVScGswWWNvTmNpY2YzWDZ4ZWxZMjE1dFJFOFQwdVpSY2FPM2FWU05DR1oxTjY1MnBMUFV2SmJYMDZjMmYrc0FLZldrTEYvcnA2Nm1DK0c5c1VqR0c4cFFZcEtKTWc5YndNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1MjUxOTI5CWZpbGU6WkhUIEVSUCDpooTlj5FfMC4yLjRfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMi40ClpNUG9WS0grdi9YcVZUVTM3cjZoRW1qdDdoMmhsYzRObDk4MmkvMGZOUlpZbG1mSFZSUkRUOHY0MEtrTFJ6cUNISEN0UVRVYkpuczFhM3labDBZNUF3PT0K",
+      "url": "https://github.com/zht-innovation/zhterp-desktop/releases/download/desktop-preview-v0.2.4/zh-erp-windows-x64-setup.exe"
     }
   },
-  "version": "0.2.3"
+  "version": "0.2.4"
 }
