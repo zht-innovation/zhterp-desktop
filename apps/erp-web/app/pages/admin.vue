@@ -2,7 +2,7 @@
     <div :class="desktopLogin ? 'desktop-login' : 'root'">
         <template v-if="desktopLogin">
             <div class="drone-backdrop" aria-hidden="true">
-                <svg viewBox="222 413 957 1113" preserveAspectRatio="xMidYMid slice" focusable="false">
+                <svg viewBox="222 413 957 1113" preserveAspectRatio="xMidYMid meet" focusable="false">
                     <image :href="droneImage" width="1401" height="1601" />
                 </svg>
             </div>
@@ -205,6 +205,7 @@ const onSubmit = async () => {
     position: absolute;
     inset: 0;
     z-index: -1;
+    mix-blend-mode: multiply;
     overflow: hidden;
     pointer-events: none;
 }
@@ -221,7 +222,6 @@ const onSubmit = async () => {
     display: block;
     width: 100%;
     height: 100%;
-    mix-blend-mode: multiply;
     opacity: .45;
 }
 .brand-bar, .brand-footer {
